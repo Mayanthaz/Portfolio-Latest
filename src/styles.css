@@ -1,0 +1,263 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --font-display: "SF Pro Display", "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-sans: "SF Pro Text", "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+:root {
+  --radius: 0.9rem;
+
+  /* Light, paper-clean macOS theme */
+  --background: oklch(0.985 0.003 250);
+  --foreground: oklch(0.18 0.015 260);
+
+  --surface: oklch(1 0 0);
+  --surface-2: oklch(0.96 0.005 250);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.015 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.015 260);
+
+  --primary: oklch(0.22 0.02 260);
+  --primary-foreground: oklch(0.99 0.002 250);
+  --secondary: oklch(0.95 0.005 250);
+  --secondary-foreground: oklch(0.22 0.02 260);
+  --muted: oklch(0.96 0.005 250);
+  --muted-foreground: oklch(0.48 0.015 260);
+  --accent: oklch(0.94 0.01 250);
+  --accent-foreground: oklch(0.22 0.02 260);
+  --destructive: oklch(0.6 0.22 27);
+  --destructive-foreground: oklch(0.99 0.002 250);
+  --border: oklch(0 0 0 / 8%);
+  --input: oklch(0 0 0 / 10%);
+  --ring: oklch(0.22 0.02 260);
+
+  --glass-bg: oklch(1 0 0 / 65%);
+  --glass-border: oklch(0 0 0 / 7%);
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 4%), 0 8px 24px -12px oklch(0 0 0 / 12%);
+  --shadow-card:
+    0 1px 0 oklch(1 0 0 / 60%) inset, 0 1px 2px oklch(0 0 0 / 4%),
+    0 12px 32px -16px oklch(0 0 0 / 14%);
+  --ambient-primary: oklch(0.72 0.12 270 / 12%);
+  --ambient-secondary: oklch(0.76 0.08 220 / 10%);
+  --ambient-grid: oklch(0.2 0.02 260 / 4%);
+}
+
+.dark {
+  --background: oklch(0.14 0.01 260);
+  --foreground: oklch(0.97 0.003 250);
+
+  --surface: oklch(0.19 0.015 260);
+  --surface-2: oklch(0.22 0.015 260);
+
+  --card: oklch(0.19 0.015 260);
+  --card-foreground: oklch(0.97 0.003 250);
+  --popover: oklch(0.19 0.015 260);
+  --popover-foreground: oklch(0.97 0.003 250);
+
+  --primary: oklch(0.97 0.003 250);
+  --primary-foreground: oklch(0.18 0.015 260);
+  --secondary: oklch(0.24 0.015 260);
+  --secondary-foreground: oklch(0.97 0.003 250);
+  --muted: oklch(0.24 0.015 260);
+  --muted-foreground: oklch(0.66 0.01 260);
+  --accent: oklch(0.26 0.015 260);
+  --accent-foreground: oklch(0.97 0.003 250);
+  --destructive: oklch(0.68 0.2 25);
+  --destructive-foreground: oklch(0.97 0.003 250);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.78 0.02 250);
+
+  --glass-bg: oklch(0.2 0.015 260 / 65%);
+  --glass-border: oklch(1 0 0 / 12%);
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 30%), 0 12px 32px -16px oklch(0 0 0 / 50%);
+  --shadow-card:
+    0 1px 0 oklch(1 0 0 / 6%) inset, 0 1px 2px oklch(0 0 0 / 30%),
+    0 14px 36px -18px oklch(0 0 0 / 55%);
+  --ambient-primary: oklch(0.55 0.16 280 / 14%);
+  --ambient-secondary: oklch(0.58 0.1 230 / 10%);
+  --ambient-grid: oklch(0.92 0.01 260 / 3%);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    letter-spacing: -0.011em;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.03em;
+    font-weight: 600;
+  }
+}
+
+@utility glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-soft);
+}
+
+@utility card-soft {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+}
+
+@utility traffic-dots {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.portfolio-shell {
+  isolation: isolate;
+  overflow: clip;
+}
+
+.portfolio-shell > :not(.ambient-background) {
+  position: relative;
+  z-index: 1;
+}
+
+.portfolio-shell > nav {
+  position: fixed;
+  z-index: 50;
+}
+
+.ambient-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.ambient-orb {
+  position: absolute;
+  width: min(44rem, 72vw);
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.8;
+  will-change: transform;
+}
+
+.ambient-orb-primary {
+  top: 12%;
+  left: -18rem;
+  background: var(--ambient-primary);
+  animation: ambient-drift-primary 24s ease-in-out infinite alternate;
+}
+
+.ambient-orb-secondary {
+  right: -20rem;
+  bottom: 5%;
+  background: var(--ambient-secondary);
+  animation: ambient-drift-secondary 30s ease-in-out infinite alternate;
+}
+
+.ambient-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.6;
+  background-image:
+    linear-gradient(var(--ambient-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ambient-grid) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
+  animation: ambient-grid-shift 40s linear infinite;
+}
+
+@keyframes ambient-drift-primary {
+  from {
+    transform: translate3d(0, -4%, 0) scale(0.96);
+  }
+  to {
+    transform: translate3d(35vw, 12%, 0) scale(1.08);
+  }
+}
+
+@keyframes ambient-drift-secondary {
+  from {
+    transform: translate3d(0, 8%, 0) scale(1.04);
+  }
+  to {
+    transform: translate3d(-32vw, -10%, 0) scale(0.94);
+  }
+}
+
+@keyframes ambient-grid-shift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(72px, 72px, 0);
+  }
+}
+
+@media (max-width: 640px) {
+  .ambient-orb {
+    width: 34rem;
+    filter: blur(110px);
+  }
+
+  .ambient-grid {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-orb,
+  .ambient-grid {
+    animation: none;
+    will-change: auto;
+  }
+}

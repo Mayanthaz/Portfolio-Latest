@@ -1,0 +1,33 @@
+project_id = "mayantha-portfolio"
+
+[auth]
+enable_signup = false
+
+[auth.rate_limit]
+# Custom SMTP is required for an email limit above the shared trial allowance.
+email_sent = 10
+# Increased from Supabase's default of 30 while retaining IP-based throttling.
+sign_in_sign_ups = 60
+token_refresh = 150
+token_verifications = 30
+
+[auth.email]
+enable_signup = false
+double_confirm_changes = true
+secure_password_change = true
+max_frequency = "1m"
+otp_expiry = 3600
+
+# Production SMTP credentials are supplied as secrets and never committed.
+[auth.email.smtp]
+enabled = true
+host = "env(SMTP_HOST)"
+port = 587
+user = "env(SMTP_USER)"
+pass = "env(SMTP_PASS)"
+admin_email = "env(SMTP_FROM_EMAIL)"
+sender_name = "Mayantha Portfolio"
+
+[auth.email.template.recovery]
+subject = "Reset your Mayantha Portfolio password"
+content_path = "./supabase/templates/recovery.html"
