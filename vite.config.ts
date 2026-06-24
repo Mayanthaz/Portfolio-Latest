@@ -8,6 +8,25 @@ export default defineConfig({
     tailwindcss(),
     tanstackStart({
       server: { entry: "server" },
+      spa: {
+        enabled: true,
+        maskPath: "/auth",
+        prerender: {
+          outputPath: "/404.html",
+        },
+      },
+      prerender: {
+        enabled: true,
+        autoStaticPathsDiscovery: false,
+        crawlLinks: false,
+        failOnError: true,
+      },
+      pages: [
+        {
+          path: "/",
+          prerender: { enabled: true, outputPath: "/index.html" },
+        },
+      ],
       importProtection: {
         behavior: "error",
         client: {
