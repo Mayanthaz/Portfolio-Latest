@@ -141,9 +141,25 @@ function RootComponent() {
 
   useEffect(() => {
     let mounted = true;
+
+    // Supabase may fall back to the configured Site URL when a requested
+    // redirect URL is missing from its allow list. Preserve the recovery
+    // token and move that fallback callback to the password reset screen.
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    if (hashParams.get("type") === "recovery" && window.location.pathname !== "/auth") {
+      window.location.replace(`/auth?recovery=1${window.location.hash}`);
+      return () => {
+        mounted = false;
+      };
+    }
+
     import("@/integrations/supabase/client").then(({ supabase }) => {
       if (!mounted) return;
       const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+        if (event === "PASSWORD_RECOVERY" && window.location.pathname !== "/auth") {
+          window.location.replace("/auth?recovery=1");
+          return;
+        }
         if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
           router.invalidate();
           if (event !== "SIGNED_OUT") queryClient.invalidateQueries();

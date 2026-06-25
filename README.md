@@ -34,8 +34,15 @@ expose a service-role or secret key as a `VITE_` variable.
 
 In **Supabase Dashboard → Authentication → URL Configuration**:
 
-- Set **Site URL** to the deployed website URL.
-- Add `https://your-domain.com/auth?recovery=1` to **Redirect URLs**.
+- Set **Site URL** to `https://mayantha.dev`.
+- Add `https://mayantha.dev/auth?recovery=1` to **Redirect URLs**.
+- While the Lovable preview remains active, also add
+  `https://aqua-mac-showcase.lovable.app/auth?recovery=1`.
+- For local recovery testing, add `http://localhost:5173/auth?recovery=1`.
+
+The production URL should be an exact match. If the requested recovery URL is
+not in this allow list, Supabase can fall back to the Site URL and open the
+portfolio homepage instead of the reset-password form.
 
 In **Authentication → Providers → Email**, disable new-user sign-ups. The database
 RLS policies enforce the approved administrator identity. The repository's Supabase
