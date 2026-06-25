@@ -2,6 +2,11 @@ project_id = "mayantha-portfolio"
 
 [auth]
 enable_signup = false
+site_url = "https://mayantha.dev"
+additional_redirect_urls = [
+  "https://mayantha.dev/auth?recovery=1",
+  "http://localhost:5173/auth?recovery=1",
+]
 
 [auth.rate_limit]
 # Custom SMTP is required for an email limit above the shared trial allowance.

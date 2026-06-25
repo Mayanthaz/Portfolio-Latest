@@ -13,6 +13,14 @@ export const Route = createFileRoute("/auth")({
 type AuthMode = "signin" | "forgot" | "reset";
 
 const ADMIN_EMAIL_SHA256 = "5707013f5c5b7818f7f608748214ebd19f9621750736c0cacce6b8ed9da2e345";
+const PRODUCTION_RECOVERY_URL = "https://mayantha.dev/auth?recovery=1";
+
+function getRecoveryRedirectUrl() {
+  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+    return `${window.location.origin}/auth?recovery=1`;
+  }
+  return PRODUCTION_RECOVERY_URL;
+}
 
 async function isApprovedRecoveryEmail(email: string) {
   const normalizedEmail = email.trim().toLowerCase();
@@ -31,16 +39,68 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [recoveryReady, setRecoveryReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
-    const recoveryRequested = new URLSearchParams(window.location.search).get("recovery") === "1";
+    const searchParams = new URLSearchParams(window.location.search);
+    const recoveryRequested = searchParams.get("recovery") === "1";
+    const tokenHash = searchParams.get("token_hash");
+    const recoveryType = searchParams.get("type");
 
     if (recoveryRequested) setMode("reset");
 
-    supabase.auth.getUser().then(async ({ data }) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY" && mounted) {
+        setMode("reset");
+        setRecoveryReady(true);
+        setError(null);
+        setInfo("Enter a new password for the admin account.");
+      }
+    });
+
+    async function initializeAuth() {
+      if (tokenHash && recoveryType === "recovery") {
+        const { error: verificationError } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: "recovery",
+        });
+
+        if (!mounted) return;
+        if (verificationError) {
+          setRecoveryReady(false);
+          setError("This password reset link is invalid or expired. Request a new link.");
+          return;
+        }
+
+        window.history.replaceState({}, "", "/auth?recovery=1");
+        setRecoveryReady(true);
+        setError(null);
+        setInfo("Enter a new password for the admin account.");
+        return;
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!mounted) return;
+
+      if (recoveryRequested) {
+        if (session) {
+          setRecoveryReady(true);
+          setInfo("Enter a new password for the admin account.");
+        } else {
+          setRecoveryReady(false);
+          setError(
+            "This page has no recovery session. Request a new reset link and open it directly.",
+          );
+        }
+        return;
+      }
+
+      const { data } = await supabase.auth.getUser();
       if (!mounted || !data.user) return;
       const { data: isAdmin } = await supabase.rpc("is_admin");
       if (!isAdmin) {
@@ -48,16 +108,10 @@ function AuthPage() {
         if (mounted) setError("Unable to sign in with those credentials.");
         return;
       }
-      if (!recoveryRequested) navigate({ to: "/admin" });
-    });
+      navigate({ to: "/admin" });
+    }
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY" && mounted) {
-        setMode("reset");
-        setError(null);
-        setInfo("Enter a new password for the admin account.");
-      }
-    });
+    void initializeAuth();
 
     return () => {
       mounted = false;
@@ -85,7 +139,7 @@ function AuthPage() {
           const { error: resetError } = await supabase.auth.resetPasswordForEmail(
             email.trim().toLowerCase(),
             {
-              redirectTo: `${window.location.origin}/auth?recovery=1`,
+              redirectTo: getRecoveryRedirectUrl(),
             },
           );
           if (resetError) {
@@ -97,6 +151,9 @@ function AuthPage() {
       }
 
       if (mode === "reset") {
+        if (!recoveryReady) {
+          throw new Error("Request a new password reset link before choosing a password.");
+        }
         if (password !== confirmPassword) {
           throw new Error("The passwords do not match.");
         }
@@ -210,7 +267,7 @@ function AuthPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (mode === "reset" && !recoveryReady)}
             className="w-full rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-60 transition"
           >
             {loading
@@ -240,6 +297,16 @@ function AuthPage() {
             className="mt-5 text-xs text-muted-foreground hover:text-foreground w-full text-center"
           >
             ← Back to sign in
+          </button>
+        )}
+
+        {mode === "reset" && !recoveryReady && (
+          <button
+            type="button"
+            onClick={() => changeMode("forgot")}
+            className="mt-5 text-xs text-muted-foreground hover:text-foreground w-full text-center"
+          >
+            Request a new reset link
           </button>
         )}
       </div>

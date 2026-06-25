@@ -44,6 +44,24 @@ The production URL should be an exact match. If the requested recovery URL is
 not in this allow list, Supabase can fall back to the Site URL and open the
 portfolio homepage instead of the reset-password form.
 
+The reset email template uses a direct one-time token link to the production
+site. In **Authentication → Email Templates → Reset password**, set the button
+link to:
+
+```html
+https://mayantha.dev/auth?recovery=1&amp;token_hash={{ .TokenHash }}&amp;type=recovery
+```
+
+Hosted Supabase settings are not changed merely by editing this repository.
+After linking the hosted project, apply the Auth configuration and email
+template with:
+
+```bash
+npx supabase login
+npx supabase link --project-ref oiwfffssnjpeokeeusrf
+npx supabase config push
+```
+
 In **Authentication → Providers → Email**, disable new-user sign-ups. The database
 RLS policies enforce the approved administrator identity. The repository's Supabase
 config has `enable_signup = false`, but confirm this setting in the hosted dashboard.
