@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ThemeToggle } from "@/lib/theme";
 
@@ -10,306 +10,229 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-type AuthMode = "signin" | "forgot" | "reset";
-
-const ADMIN_EMAIL_SHA256 = "05eb42a4fbf14b866242d5cef8b4dfe4e0d3ef1030ed1b8f7f13a93f967894ec";
-const PRODUCTION_RECOVERY_URL = "https://mayantha.dev/auth?recovery=1";
-
-function getRecoveryRedirectUrl() {
-  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-    return `${window.location.origin}/auth?recovery=1`;
-  }
-  return PRODUCTION_RECOVERY_URL;
-}
-
-async function isApprovedRecoveryEmail(email: string) {
-  const normalizedEmail = email.trim().toLowerCase();
-  const bytes = new TextEncoder().encode(normalizedEmail);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  const hash = Array.from(new Uint8Array(digest), (byte) =>
-    byte.toString(16).padStart(2, "0"),
-  ).join("");
-  return hash === ADMIN_EMAIL_SHA256;
-}
+const PASSCODE_LENGTH = 7;
+const ADMIN_EMAIL = "mayantha743@gmail.com";
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<AuthMode>("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [digits, setDigits] = useState<string[]>(Array(PASSCODE_LENGTH).fill(""));
   const [loading, setLoading] = useState(false);
-  const [recoveryReady, setRecoveryReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
+  const [shake, setShake] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  // Check if already logged in
   useEffect(() => {
     let mounted = true;
-    const searchParams = new URLSearchParams(window.location.search);
-    const recoveryRequested = searchParams.get("recovery") === "1";
-    const tokenHash = searchParams.get("token_hash");
-    const recoveryType = searchParams.get("type");
-
-    if (recoveryRequested) setMode("reset");
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY" && mounted) {
-        setMode("reset");
-        setRecoveryReady(true);
-        setError(null);
-        setInfo("Enter a new password for the admin account.");
-      }
-    });
-
-    async function initializeAuth() {
-      if (tokenHash && recoveryType === "recovery") {
-        const { error: verificationError } = await supabase.auth.verifyOtp({
-          token_hash: tokenHash,
-          type: "recovery",
-        });
-
-        if (!mounted) return;
-        if (verificationError) {
-          setRecoveryReady(false);
-          setError("This password reset link is invalid or expired. Request a new link.");
-          return;
-        }
-
-        window.history.replaceState({}, "", "/auth?recovery=1");
-        setRecoveryReady(true);
-        setError(null);
-        setInfo("Enter a new password for the admin account.");
-        return;
-      }
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!mounted) return;
-
-      if (recoveryRequested) {
-        if (session) {
-          setRecoveryReady(true);
-          setInfo("Enter a new password for the admin account.");
-        } else {
-          setRecoveryReady(false);
-          setError(
-            "This page has no recovery session. Request a new reset link and open it directly.",
-          );
-        }
-        return;
-      }
-
+    async function checkSession() {
       const { data } = await supabase.auth.getUser();
-      if (!mounted || !data.user) return;
+      if (!data.user || !mounted) return;
       const { data: isAdmin } = await supabase.rpc("is_admin");
-      if (!isAdmin) {
-        await supabase.auth.signOut();
-        if (mounted) setError("Unable to sign in with those credentials.");
-        return;
-      }
-      navigate({ to: "/admin" });
+      if (isAdmin && mounted) navigate({ to: "/admin" });
     }
-
-    void initializeAuth();
-
-    return () => {
-      mounted = false;
-      authListener.subscription.unsubscribe();
-    };
+    void checkSession();
+    return () => { mounted = false; };
   }, [navigate]);
 
-  function changeMode(nextMode: AuthMode) {
-    setMode(nextMode);
-    setPassword("");
-    setConfirmPassword("");
-    setError(null);
-    setInfo(null);
+  // Focus first input on mount
+  useEffect(() => {
+    inputRefs.current[0]?.focus();
+  }, []);
+
+  function triggerShake() {
+    setShake(true);
+    setTimeout(() => setShake(false), 600);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function attemptLogin(passcode: string) {
     setError(null);
-    setInfo(null);
     setLoading(true);
 
     try {
-      if (mode === "forgot") {
-        if (await isApprovedRecoveryEmail(email)) {
-          const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-            email.trim().toLowerCase(),
-            {
-              redirectTo: getRecoveryRedirectUrl(),
-            },
-          );
-          if (resetError) {
-            throw new Error("Unable to send a reset link right now. Please wait and retry.");
-          }
-        }
-        setInfo("If the account is valid, password reset instructions have been sent.");
-        return;
-      }
-
-      if (mode === "reset") {
-        if (!recoveryReady) {
-          throw new Error("Request a new password reset link before choosing a password.");
-        }
-        if (password !== confirmPassword) {
-          throw new Error("The passwords do not match.");
-        }
-
-        const { error: updateError } = await supabase.auth.updateUser({ password });
-        if (updateError) throw updateError;
-        await supabase.auth.signOut();
-        changeMode("signin");
-        setInfo("Password updated. Sign in with your new password.");
-        window.history.replaceState({}, "", "/auth");
-        return;
-      }
-
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password,
+        email: ADMIN_EMAIL,
+        password: passcode,
       });
-      if (signInError) throw new Error("Unable to sign in with those credentials.");
-      const { data: isAdmin, error: authorizationError } = await supabase.rpc("is_admin");
-      if (authorizationError || !isAdmin || !data.user) {
-        await supabase.auth.signOut();
-        throw new Error("Unable to sign in with those credentials.");
+
+      if (signInError || !data.user) {
+        throw new Error("Invalid passcode");
       }
-      navigate({ to: "/admin" });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Authentication failed");
+
+      const { data: isAdmin, error: adminError } = await supabase.rpc("is_admin");
+      if (adminError || !isAdmin) {
+        await supabase.auth.signOut();
+        throw new Error("Invalid passcode");
+      }
+
+      setSuccess(true);
+      setTimeout(() => navigate({ to: "/admin" }), 500);
+    } catch {
+      setError("Invalid passcode");
+      triggerShake();
+      setDigits(Array(PASSCODE_LENGTH).fill(""));
+      setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } finally {
       setLoading(false);
     }
   }
 
-  const title =
-    mode === "signin"
-      ? "Admin sign in"
-      : mode === "forgot"
-        ? "Reset password"
-        : "Choose a new password";
+  function handleChange(index: number, value: string) {
+    // Only allow digits
+    const digit = value.replace(/\D/g, "").slice(-1);
+    const newDigits = [...digits];
+    newDigits[index] = digit;
+    setDigits(newDigits);
+    setError(null);
+
+    if (digit && index < PASSCODE_LENGTH - 1) {
+      inputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto-submit when all digits filled
+    if (digit && index === PASSCODE_LENGTH - 1) {
+      const passcode = newDigits.join("");
+      if (passcode.length === PASSCODE_LENGTH) {
+        void attemptLogin(passcode);
+      }
+    }
+  }
+
+  function handleKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Backspace") {
+      e.preventDefault();
+      const newDigits = [...digits];
+      if (digits[index]) {
+        newDigits[index] = "";
+        setDigits(newDigits);
+      } else if (index > 0) {
+        newDigits[index - 1] = "";
+        setDigits(newDigits);
+        inputRefs.current[index - 1]?.focus();
+      }
+    } else if (e.key === "ArrowLeft" && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    } else if (e.key === "ArrowRight" && index < PASSCODE_LENGTH - 1) {
+      inputRefs.current[index + 1]?.focus();
+    } else if (e.key === "Enter") {
+      const passcode = digits.join("");
+      if (passcode.length === PASSCODE_LENGTH) {
+        void attemptLogin(passcode);
+      }
+    }
+  }
+
+  function handlePaste(e: React.ClipboardEvent) {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, PASSCODE_LENGTH);
+    if (!pasted) return;
+
+    const newDigits = [...digits];
+    for (let i = 0; i < pasted.length; i++) {
+      newDigits[i] = pasted[i];
+    }
+    setDigits(newDigits);
+
+    const nextIndex = Math.min(pasted.length, PASSCODE_LENGTH - 1);
+    inputRefs.current[nextIndex]?.focus();
+
+    if (pasted.length === PASSCODE_LENGTH) {
+      void attemptLogin(pasted);
+    }
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
+
       <div className="w-full max-w-md card-soft rounded-2xl p-8">
-        <Link to="/" className="text-xs text-muted-foreground hover:text-foreground">
+        <Link to="/" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
           ← Back to site
         </Link>
+
         <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">
           Mayantha Portfolio
         </p>
-        <h1 className="mt-2 text-2xl font-semibold">{title}</h1>
+        <h1 className="mt-2 text-2xl font-semibold">Admin access</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {mode === "signin" && "Sign in with the single approved admin account."}
-          {mode === "forgot" && "A recovery link will be sent to the admin email."}
-          {mode === "reset" && "Use at least 6 characters for the new password."}
+          Enter your passcode to continue.
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          {mode !== "reset" && (
-            <div>
-              <label className="text-xs uppercase tracking-wider text-muted-foreground">
-                Email
-              </label>
-              <input
-                type="email"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-xl bg-muted border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
+        {/* Passcode input boxes */}
+        <div
+          className={`mt-8 flex justify-center gap-2 sm:gap-3 ${shake ? "auth-shake" : ""}`}
+          onPaste={handlePaste}
+        >
+          {digits.map((digit, i) => (
+            <input
+              key={i}
+              ref={(el) => { inputRefs.current[i] = el; }}
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              value={digit}
+              disabled={loading || success}
+              onChange={(e) => handleChange(i, e.target.value)}
+              onKeyDown={(e) => handleKeyDown(i, e)}
+              onFocus={(e) => e.target.select()}
+              aria-label={`Digit ${i + 1}`}
+              className={`
+                w-10 h-12 sm:w-12 sm:h-14
+                rounded-xl border text-center text-lg font-semibold
+                transition-all duration-200 outline-none
+                bg-muted
+                ${success
+                  ? "border-emerald-500 text-emerald-500 dark:border-emerald-400 dark:text-emerald-400"
+                  : error
+                    ? "border-destructive text-destructive"
+                    : digit
+                      ? "border-primary text-foreground shadow-sm shadow-primary/20"
+                      : "border-border text-foreground"
+                }
+                focus:ring-2 focus:ring-ring focus:border-primary
+                disabled:opacity-60 disabled:cursor-not-allowed
+              `}
+              style={{ caretColor: "transparent" }}
+            />
+          ))}
+        </div>
+
+        {/* Status messages */}
+        <div className="mt-5 text-center min-h-[1.5rem]">
+          {loading && (
+            <p className="text-xs text-muted-foreground flex items-center justify-center gap-2">
+              <span className="inline-block w-3 h-3 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+              Verifying…
+            </p>
           )}
-
-          {mode !== "forgot" && (
-            <div>
-              <label className="text-xs uppercase tracking-wider text-muted-foreground">
-                {mode === "reset" ? "New password" : "Password"}
-              </label>
-              <input
-                type="password"
-                required
-                minLength={6}
-                autoComplete={mode === "reset" ? "new-password" : "current-password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-xl bg-muted border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
+          {error && !loading && (
+            <p className="text-xs text-destructive">{error}</p>
           )}
-
-          {mode === "reset" && (
-            <div>
-              <label className="text-xs uppercase tracking-wider text-muted-foreground">
-                Confirm new password
-              </label>
-              <input
-                type="password"
-                required
-                minLength={6}
-                autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="mt-1 w-full rounded-xl bg-muted border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
+          {success && (
+            <p className="text-xs text-emerald-600 dark:text-emerald-400">
+              Access granted — redirecting…
+            </p>
           )}
+        </div>
 
-          {error && <p className="text-xs text-destructive">{error}</p>}
-          {info && <p className="text-xs text-emerald-600 dark:text-emerald-400">{info}</p>}
-
-          <button
-            type="submit"
-            disabled={loading || (mode === "reset" && !recoveryReady)}
-            className="w-full rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-60 transition"
-          >
-            {loading
-              ? "Working…"
-              : mode === "signin"
-                ? "Sign in"
-                : mode === "forgot"
-                  ? "Send reset link"
-                  : "Update password"}
-          </button>
-        </form>
-
-        {mode === "signin" && (
-          <button
-            type="button"
-            onClick={() => changeMode("forgot")}
-            className="mt-5 text-xs text-muted-foreground hover:text-foreground w-full text-center"
-          >
-            Forgot password?
-          </button>
-        )}
-
-        {mode === "forgot" && (
-          <button
-            type="button"
-            onClick={() => changeMode("signin")}
-            className="mt-5 text-xs text-muted-foreground hover:text-foreground w-full text-center"
-          >
-            ← Back to sign in
-          </button>
-        )}
-
-        {mode === "reset" && !recoveryReady && (
-          <button
-            type="button"
-            onClick={() => changeMode("forgot")}
-            className="mt-5 text-xs text-muted-foreground hover:text-foreground w-full text-center"
-          >
-            Request a new reset link
-          </button>
-        )}
+        <p className="mt-6 text-[11px] text-muted-foreground/60 text-center">
+          Contact the site owner if you've lost access.
+        </p>
       </div>
+
+      {/* Shake animation */}
+      <style>{`
+        @keyframes auth-shake {
+          0%, 100% { transform: translateX(0); }
+          15%, 45%, 75% { transform: translateX(-6px); }
+          30%, 60%, 90% { transform: translateX(6px); }
+        }
+        .auth-shake {
+          animation: auth-shake 0.5s ease-in-out;
+        }
+      `}</style>
     </div>
   );
 }
