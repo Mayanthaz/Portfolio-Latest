@@ -12,7 +12,7 @@ export const Route = createFileRoute("/auth")({
 
 type AuthMode = "signin" | "forgot" | "reset";
 
-const ADMIN_EMAIL_SHA256 = "5707013f5c5b7818f7f608748214ebd19f9621750736c0cacce6b8ed9da2e345";
+const ADMIN_EMAIL_SHA256 = "05eb42a4fbf14b866242d5cef8b4dfe4e0d3ef1030ed1b8f7f13a93f967894ec";
 const PRODUCTION_RECOVERY_URL = "https://mayantha.dev/auth?recovery=1";
 
 function getRecoveryRedirectUrl() {

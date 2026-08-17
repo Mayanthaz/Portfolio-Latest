@@ -16,7 +16,7 @@ AS $$
         'sha256'
       ),
       'hex'
-    ) = '5707013f5c5b7818f7f608748214ebd19f9621750736c0cacce6b8ed9da2e345';
+    ) = '05eb42a4fbf14b866242d5cef8b4dfe4e0d3ef1030ed1b8f7f13a93f967894ec';
 $$;
 
 REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC, anon;
