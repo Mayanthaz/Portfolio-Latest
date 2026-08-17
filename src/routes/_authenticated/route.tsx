@@ -5,14 +5,23 @@ export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth" });
-
-    const { data: isAdmin, error: authorizationError } = await supabase.rpc("is_admin");
-    if (authorizationError || !isAdmin) {
-      await supabase.auth.signOut();
-      throw redirect({ to: "/auth" });
+    
+    // Try Supabase auth first
+    if (!error && data.user) {
+      const { data: isAdmin, error: authorizationError } = await supabase.rpc("is_admin");
+      if (!authorizationError && isAdmin) {
+        return { user: data.user };
+      }
     }
-    return { user: data.user };
+
+    // Fallback: check sessionStorage passcode auth
+    if (typeof window !== "undefined" && sessionStorage.getItem("admin_authenticated") === "true") {
+      return { user: data?.user ?? null };
+    }
+
+    // Neither auth method worked
+    if (data?.user) await supabase.auth.signOut();
+    throw redirect({ to: "/auth" });
   },
   component: () => <Outlet />,
 });
