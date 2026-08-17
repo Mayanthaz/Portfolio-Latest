@@ -56,19 +56,19 @@ function AuthPage() {
       });
 
       if (signInError || !data.user) {
-        throw new Error("Invalid passcode");
+        throw new Error(signInError?.message || "Sign-in failed: no user returned");
       }
 
       const { data: isAdmin, error: adminError } = await supabase.rpc("is_admin");
       if (adminError || !isAdmin) {
         await supabase.auth.signOut();
-        throw new Error("Invalid passcode");
+        throw new Error(adminError?.message || "Admin check failed: is_admin returned false");
       }
 
       setSuccess(true);
       setTimeout(() => navigate({ to: "/admin" }), 500);
-    } catch {
-      setError("Invalid passcode");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
       triggerShake();
       setDigits(Array(PASSCODE_LENGTH).fill(""));
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
