@@ -10,17 +10,17 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-const PASSCODE_LENGTH = 7;
 const ADMIN_EMAIL = "mayantha743@gmail.com";
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [digits, setDigits] = useState<string[]>(Array(PASSCODE_LENGTH).fill(""));
+  const [email, setEmail] = useState(ADMIN_EMAIL);
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shake, setShake] = useState(false);
   const [success, setSuccess] = useState(false);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const passwordRef = useRef<HTMLInputElement | null>(null);
 
   // Check if already logged in
   useEffect(() => {
@@ -35,9 +35,9 @@ function AuthPage() {
     return () => { mounted = false; };
   }, [navigate]);
 
-  // Focus first input on mount
+  // Focus password input on mount
   useEffect(() => {
-    inputRefs.current[0]?.focus();
+    passwordRef.current?.focus();
   }, []);
 
   function triggerShake() {
@@ -45,126 +45,53 @@ function AuthPage() {
     setTimeout(() => setShake(false), 600);
   }
 
-  async function attemptLogin(passcode: string) {
+  async function attemptLogin(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (!password.trim()) return;
+
     setError(null);
     setLoading(true);
 
     try {
-      // Client-side passcode verification using SHA-256 hash
-      const encoder = new TextEncoder();
-      const data = encoder.encode(passcode);
-      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-      const hashHex = Array.from(new Uint8Array(hashBuffer), (b) =>
-        b.toString(16).padStart(2, "0"),
-      ).join("");
+      // Authenticate via Supabase — this is the sole verification
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-      // SHA-256 of "7430493"
-      const PASSCODE_HASH = "171f35048bcdf27b816d76a06f4bd5379980af8929b78ee6b20e24c37bccd97b";
-
-      if (hashHex !== PASSCODE_HASH) {
-        throw new Error("Invalid passcode");
+      if (signInError) {
+        throw new Error("Invalid credentials");
       }
 
-      // Passcode correct — attempt Supabase sign-in for session
-      try {
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: ADMIN_EMAIL,
-          password: passcode,
-        });
-
-        if (signInError) {
-          console.error("[Auth] Supabase sign-in failed:", signInError.message);
-          // Store auth in sessionStorage as fallback
-          sessionStorage.setItem("admin_authenticated", "true");
-        } else if (signInData.user) {
-          // Verify admin status
-          const { data: isAdmin, error: adminError } = await supabase.rpc("is_admin");
-          if (adminError) {
-            console.error("[Auth] is_admin check failed:", adminError.message);
-          }
-          if (!isAdmin) {
-            console.warn("[Auth] is_admin returned false, using session fallback");
-            sessionStorage.setItem("admin_authenticated", "true");
-          }
-        }
-      } catch (supabaseErr) {
-        console.error("[Auth] Supabase error:", supabaseErr);
-        sessionStorage.setItem("admin_authenticated", "true");
+      if (!signInData.user) {
+        throw new Error("Authentication failed");
       }
 
+      // Verify admin status via server-side RPC
+      const { data: isAdmin, error: adminError } = await supabase.rpc("is_admin");
+
+      if (adminError) {
+        // Fail closed — sign out and reject
+        await supabase.auth.signOut();
+        throw new Error("Authorization check failed. Please try again.");
+      }
+
+      if (!isAdmin) {
+        // Not an admin — sign out and reject
+        await supabase.auth.signOut();
+        throw new Error("This account does not have admin access");
+      }
+
+      // Fully verified admin session
       setSuccess(true);
       setTimeout(() => navigate({ to: "/admin" }), 500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid passcode");
+      setError(err instanceof Error ? err.message : "Authentication failed");
       triggerShake();
-      setDigits(Array(PASSCODE_LENGTH).fill(""));
-      setTimeout(() => inputRefs.current[0]?.focus(), 100);
+      setPassword("");
+      setTimeout(() => passwordRef.current?.focus(), 100);
     } finally {
       setLoading(false);
-    }
-  }
-
-  function handleChange(index: number, value: string) {
-    // Only allow digits
-    const digit = value.replace(/\D/g, "").slice(-1);
-    const newDigits = [...digits];
-    newDigits[index] = digit;
-    setDigits(newDigits);
-    setError(null);
-
-    if (digit && index < PASSCODE_LENGTH - 1) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    // Auto-submit when all digits filled
-    if (digit && index === PASSCODE_LENGTH - 1) {
-      const passcode = newDigits.join("");
-      if (passcode.length === PASSCODE_LENGTH) {
-        void attemptLogin(passcode);
-      }
-    }
-  }
-
-  function handleKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Backspace") {
-      e.preventDefault();
-      const newDigits = [...digits];
-      if (digits[index]) {
-        newDigits[index] = "";
-        setDigits(newDigits);
-      } else if (index > 0) {
-        newDigits[index - 1] = "";
-        setDigits(newDigits);
-        inputRefs.current[index - 1]?.focus();
-      }
-    } else if (e.key === "ArrowLeft" && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    } else if (e.key === "ArrowRight" && index < PASSCODE_LENGTH - 1) {
-      inputRefs.current[index + 1]?.focus();
-    } else if (e.key === "Enter") {
-      const passcode = digits.join("");
-      if (passcode.length === PASSCODE_LENGTH) {
-        void attemptLogin(passcode);
-      }
-    }
-  }
-
-  function handlePaste(e: React.ClipboardEvent) {
-    e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, PASSCODE_LENGTH);
-    if (!pasted) return;
-
-    const newDigits = [...digits];
-    for (let i = 0; i < pasted.length; i++) {
-      newDigits[i] = pasted[i];
-    }
-    setDigits(newDigits);
-
-    const nextIndex = Math.min(pasted.length, PASSCODE_LENGTH - 1);
-    inputRefs.current[nextIndex]?.focus();
-
-    if (pasted.length === PASSCODE_LENGTH) {
-      void attemptLogin(pasted);
     }
   }
 
@@ -184,56 +111,59 @@ function AuthPage() {
         </p>
         <h1 className="mt-2 text-2xl font-semibold">Admin access</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Enter your passcode to continue.
+          Sign in to manage site content.
         </p>
 
-        {/* Passcode input boxes */}
-        <div
-          className={`mt-8 flex justify-center gap-2 sm:gap-3 ${shake ? "auth-shake" : ""}`}
-          onPaste={handlePaste}
-        >
-          {digits.map((digit, i) => (
+        <form onSubmit={attemptLogin} className={`mt-8 space-y-4 ${shake ? "auth-shake" : ""}`}>
+          <div>
+            <label htmlFor="auth-email" className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Email
+            </label>
             <input
-              key={i}
-              ref={(el) => { inputRefs.current[i] = el; }}
-              type="text"
-              inputMode="numeric"
-              maxLength={1}
-              value={digit}
+              id="auth-email"
+              type="email"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setError(null); }}
               disabled={loading || success}
-              onChange={(e) => handleChange(i, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(i, e)}
-              onFocus={(e) => e.target.select()}
-              aria-label={`Digit ${i + 1}`}
-              className={`
-                w-10 h-12 sm:w-12 sm:h-14
-                rounded-xl border text-center text-lg font-semibold
-                transition-all duration-200 outline-none
-                bg-muted
-                ${success
-                  ? "border-emerald-500 text-emerald-500 dark:border-emerald-400 dark:text-emerald-400"
-                  : error
-                    ? "border-destructive text-destructive"
-                    : digit
-                      ? "border-primary text-foreground shadow-sm shadow-primary/20"
-                      : "border-border text-foreground"
-                }
-                focus:ring-2 focus:ring-ring focus:border-primary
-                disabled:opacity-60 disabled:cursor-not-allowed
-              `}
-              style={{ caretColor: "transparent" }}
+              autoComplete="email"
+              className="mt-1 w-full rounded-xl bg-muted border border-border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary disabled:opacity-60"
             />
-          ))}
-        </div>
+          </div>
+
+          <div>
+            <label htmlFor="auth-password" className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Password
+            </label>
+            <input
+              id="auth-password"
+              ref={passwordRef}
+              type="password"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setError(null); }}
+              disabled={loading || success}
+              autoComplete="current-password"
+              className="mt-1 w-full rounded-xl bg-muted border border-border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary disabled:opacity-60"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading || success || !password.trim()}
+            className="w-full rounded-xl bg-primary text-primary-foreground px-4 py-3 text-sm font-medium hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="inline-block w-3 h-3 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                Signing in…
+              </span>
+            ) : (
+              "Sign in"
+            )}
+          </button>
+        </form>
 
         {/* Status messages */}
-        <div className="mt-5 text-center min-h-[1.5rem]">
-          {loading && (
-            <p className="text-xs text-muted-foreground flex items-center justify-center gap-2">
-              <span className="inline-block w-3 h-3 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
-              Verifying…
-            </p>
-          )}
+        <div className="mt-4 text-center min-h-[1.5rem]">
           {error && !loading && (
             <p className="text-xs text-destructive">{error}</p>
           )}

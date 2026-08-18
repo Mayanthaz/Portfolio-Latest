@@ -112,9 +112,9 @@ INSERT INTO public.site_content (section, value) VALUES
   ]
 }'::jsonb),
 ('contact', '{
-  "email": "mayantha743@gmail.com",
-  "phone": "+94 78 368 6802",
-  "linkedin": "https://linkedin.com/in/mayanthaudayanga",
-  "github": "https://github.com/Mayanthaz",
-  "cvUrl": "/Mayantha_Udayanga_CV.pdf"
+  "email": "contact@your-domain.com",
+  "phone": "+00 00 000 0000",
+  "linkedin": "https://linkedin.com/in/your-profile",
+  "github": "https://github.com/your-username",
+  "cvUrl": "/Your_Name_CV.pdf"
 }'::jsonb);
