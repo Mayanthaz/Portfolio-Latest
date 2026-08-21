@@ -159,18 +159,6 @@ const skillIconMap: Record<string, React.ComponentType<{ className?: string }>> 
   Cloud: Cloud,
 };
 
-/** Sanitise admin-controlled URLs — block javascript:, data:, vbscript: schemes */
-function safeHref(url: string): string | undefined {
-  try {
-    const trimmed = url.trim();
-    if (/^(javascript|data|vbscript):/i.test(trimmed)) return undefined;
-    // Allow relative paths, mailto:, tel:, http(s):
-    return trimmed || undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 function Nav({ name, avatarUrl }: { name: string; avatarUrl?: string }) {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -556,9 +544,9 @@ export default function Portfolio() {
                           {c.issuer}
                           {c.year ? ` · ${c.year}` : ""}
                         </p>
-                        {c.url && safeHref(c.url) && (
+                        {c.url && (
                           <a
-                            href={safeHref(c.url)}
+                            href={c.url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 text-xs text-foreground/70 hover:text-foreground mt-1"
@@ -594,27 +582,27 @@ export default function Portfolio() {
                     Icon: Mail,
                     label: "Email",
                     value: contact.email,
-                    href: safeHref(`mailto:${contact.email}`),
+                    href: `mailto:${contact.email}`,
                   },
                   {
                     Icon: Phone,
                     label: "Phone",
                     value: contact.phone,
-                    href: safeHref(`tel:${contact.phone.replace(/\s/g, "")}`),
+                    href: `tel:${contact.phone.replace(/\s/g, "")}`,
                   },
                   {
                     Icon: LinkedinIcon,
                     label: "LinkedIn",
                     value: contact.linkedin.replace(/^https?:\/\//, ""),
-                    href: safeHref(contact.linkedin),
+                    href: contact.linkedin,
                   },
                   {
                     Icon: GithubIcon,
                     label: "GitHub",
                     value: contact.github.replace(/^https?:\/\//, ""),
-                    href: safeHref(contact.github),
+                    href: contact.github,
                   },
-                ].filter((l) => l.href).map((l) => (
+                ].map((l) => (
                   <a
                     key={l.label}
                     href={l.href}
