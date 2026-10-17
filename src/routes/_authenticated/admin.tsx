@@ -960,8 +960,95 @@ function ContactForm({
   value: SiteContentMap["contact"];
   onChange: (v: SiteContentMap["contact"]) => void;
 }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+
+  async function uploadResume(file: File) {
+    setError(null);
+    setInfo(null);
+
+    if (file.type !== "application/pdf") {
+      setError("Choose a PDF file.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setError("The PDF must be smaller than 8 MB.");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const path = "site/resume.pdf";
+      const { error: uploadError } = await supabase.storage
+        .from("portfolio-assets")
+        .upload(path, file, {
+          upsert: true,
+          contentType: "application/pdf",
+          cacheControl: "60",
+        });
+      if (uploadError) throw uploadError;
+
+      // `download` makes the file save instead of opening in the tab.
+      const { data } = supabase.storage.from("portfolio-assets").getPublicUrl(path, {
+        download: "Mayantha_Udayanga_Resume.pdf",
+      });
+      onChange({ ...value, cvUrl: `${data.publicUrl}&v=${Date.now()}` });
+      setInfo("Resume uploaded. Click Save changes to publish it.");
+    } catch {
+      setError("Upload failed. Make sure the resume storage migration has been run, then retry.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const isUploaded = value.cvUrl?.includes("/storage/v1/object/public/");
+
   return (
     <div className="space-y-4">
+      <div>
+        <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          Downloadable resume (PDF)
+        </label>
+        <div className="mt-1.5 flex flex-wrap items-center gap-4 rounded-xl border border-border bg-muted/30 p-4">
+          <div className="min-w-0 flex-1">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition">
+              {uploading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ImagePlus className="h-4 w-4" />
+              )}
+              {uploading ? "Uploading…" : "Choose PDF"}
+              <input
+                type="file"
+                accept="application/pdf"
+                disabled={uploading}
+                className="sr-only"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void uploadResume(file);
+                  event.currentTarget.value = "";
+                }}
+              />
+            </label>
+            <p className="mt-2 text-xs text-muted-foreground">
+              PDF only, up to 8 MB. Replaces the current resume.
+            </p>
+            {value.cvUrl && (
+              <a
+                href={value.cvUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-block text-xs text-brand hover:underline"
+              >
+                {isUploaded ? "Preview uploaded resume" : "Preview current resume link"}
+              </a>
+            )}
+            {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+            {info && <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">{info}</p>}
+          </div>
+        </div>
+      </div>
       <TextField
         label="Email"
         value={value.email}
@@ -983,7 +1070,7 @@ function ContactForm({
         onChange={(v) => onChange({ ...value, github: v })}
       />
       <TextField
-        label="CV file path"
+        label="Resume link (set automatically on upload, or paste your own URL)"
         value={value.cvUrl}
         onChange={(v) => onChange({ ...value, cvUrl: v })}
       />
