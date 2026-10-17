@@ -6,7 +6,8 @@ export const Route = createFileRoute("/_authenticated")({
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
 
-    // Try Supabase auth first
+    // Only a real Supabase session whose user passes the server-side is_admin()
+    // check gets in. There is no client-side flag or fallback.
     if (!error && data.user) {
       const { data: isAdmin, error: authorizationError } = await supabase.rpc("is_admin");
       if (!authorizationError && isAdmin) {
@@ -14,12 +15,7 @@ export const Route = createFileRoute("/_authenticated")({
       }
     }
 
-    // Fallback: check sessionStorage passcode auth
-    if (typeof window !== "undefined" && sessionStorage.getItem("admin_authenticated") === "true") {
-      return { user: data?.user ?? null };
-    }
-
-    // Neither auth method worked
+    // Not authorised
     if (data?.user) await supabase.auth.signOut();
     throw redirect({ to: "/auth" });
   },

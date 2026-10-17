@@ -38,7 +38,9 @@ export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
     meta: [{ title: "Admin · Manage content" }, { name: "robots", content: "noindex,nofollow" }],
   }),
-  loader: ({ context }) => context.queryClient.ensureQueryData(siteContentQueryOptions),
+  // Never block the admin on a failed content fetch; the page shows a retry notice instead.
+  loader: ({ context }) =>
+    context.queryClient.ensureQueryData(siteContentQueryOptions).catch(() => undefined),
   component: AdminPage,
 });
 
@@ -65,7 +67,7 @@ function without<T extends object>(obj: T, key: keyof T): T {
 function AdminPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { data } = useSiteContent();
+  const { data, isError, refetch, isFetching } = useSiteContent();
   const [activeSection, setActiveSection] = useState<SectionKey>("hero");
   const [drafts, setDrafts] = useState<Partial<SiteContentMap>>({});
 
@@ -167,7 +169,22 @@ function AdminPage() {
         </nav>
 
         <div className="min-w-0">
-          {!data ? (
+          {!data && isError ? (
+            <div className="card-soft rounded-2xl p-10 text-center space-y-4">
+              <AlertCircle className="w-6 h-6 mx-auto text-destructive" />
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                Couldn&apos;t load content from the database. Check the Supabase URL and key used by
+                this deploy, and that the setup SQL has been run.
+              </p>
+              <button
+                onClick={() => void refetch()}
+                disabled={isFetching}
+                className="h-10 px-5 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-60"
+              >
+                {isFetching ? "Retrying…" : "Retry"}
+              </button>
+            </div>
+          ) : !data ? (
             <div className="card-soft rounded-2xl p-10 flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" /> Loading content…
             </div>
@@ -218,9 +235,7 @@ function SectionEditor<K extends SectionKey>({
     mutationFn: async (next: SiteContentMap[K]) => {
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
-        throw new Error(
-          "You're signed in with the passcode only, so the database rejects edits. Sign out, then sign in again — the passcode must also be the Supabase password for the admin account.",
-        );
+        throw new Error("Your session expired. Sign out and sign in again.");
       }
       const { error } = await supabase
         .from("site_content")

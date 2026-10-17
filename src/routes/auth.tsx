@@ -11,6 +11,8 @@ export const Route = createFileRoute("/auth")({
 });
 
 const PASSCODE_LENGTH = 7;
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS = 60_000;
 const ADMIN_EMAIL = "mayantha743@gmail.com";
 
 function AuthPage() {
@@ -20,6 +22,19 @@ function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [shake, setShake] = useState(false);
   const [success, setSuccess] = useState(false);
+  const failures = useRef(0);
+  const [lockedUntil, setLockedUntil] = useState(0);
+  const [shown, setShown] = useState<number | null>(null);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => () => clearTimeout(hideTimer.current), []);
+
+  // Reveal the newest digit for a moment, then blur it away.
+  function flashDigit(index: number) {
+    clearTimeout(hideTimer.current);
+    setShown(index);
+    hideTimer.current = setTimeout(() => setShown(null), 450);
+  }
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Check if already logged in
@@ -48,56 +63,41 @@ function AuthPage() {
   }
 
   async function attemptLogin(passcode: string) {
+    if (Date.now() < lockedUntil) {
+      setError("Too many attempts. Try again in a minute.");
+      setDigits(Array(PASSCODE_LENGTH).fill(""));
+      return;
+    }
     setError(null);
     setLoading(true);
 
     try {
-      // Client-side passcode verification using SHA-256 hash
-      const encoder = new TextEncoder();
-      const data = encoder.encode(passcode);
-      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-      const hashHex = Array.from(new Uint8Array(hashBuffer), (b) =>
-        b.toString(16).padStart(2, "0"),
-      ).join("");
+      // Verification happens on Supabase's servers only: no passcode, hash or
+      // bypass flag exists in this bundle.
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: ADMIN_EMAIL,
+        password: passcode,
+      });
+      if (signInError) throw new Error("Invalid passcode");
 
-      // SHA-256 of "7430493"
-      const PASSCODE_HASH = "171f35048bcdf27b816d76a06f4bd5379980af8929b78ee6b20e24c37bccd97b";
-
-      if (hashHex !== PASSCODE_HASH) {
+      const { data: isAdmin, error: adminError } = await supabase.rpc("is_admin");
+      if (adminError || !isAdmin) {
+        await supabase.auth.signOut();
         throw new Error("Invalid passcode");
       }
 
-      // Passcode correct — attempt Supabase sign-in for session
-      try {
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: ADMIN_EMAIL,
-          password: passcode,
-        });
-
-        if (signInError) {
-          console.error("[Auth] Supabase sign-in failed:", signInError.message);
-          // Store auth in sessionStorage as fallback
-          sessionStorage.setItem("admin_authenticated", "true");
-        } else if (signInData.user) {
-          // Verify admin status
-          const { data: isAdmin, error: adminError } = await supabase.rpc("is_admin");
-          if (adminError) {
-            console.error("[Auth] is_admin check failed:", adminError.message);
-          }
-          if (!isAdmin) {
-            console.warn("[Auth] is_admin returned false, using session fallback");
-            sessionStorage.setItem("admin_authenticated", "true");
-          }
-        }
-      } catch (supabaseErr) {
-        console.error("[Auth] Supabase error:", supabaseErr);
-        sessionStorage.setItem("admin_authenticated", "true");
-      }
-
+      failures.current = 0;
       setSuccess(true);
       setTimeout(() => navigate({ to: "/admin" }), 500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid passcode");
+      failures.current += 1;
+      if (failures.current >= MAX_ATTEMPTS) {
+        setLockedUntil(Date.now() + LOCKOUT_MS);
+        failures.current = 0;
+        setError("Too many attempts. Try again in a minute.");
+      } else {
+        setError("Invalid passcode");
+      }
       triggerShake();
       setDigits(Array(PASSCODE_LENGTH).fill(""));
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
@@ -113,6 +113,7 @@ function AuthPage() {
     newDigits[index] = digit;
     setDigits(newDigits);
     setError(null);
+    if (digit) flashDigit(index);
 
     if (digit && index < PASSCODE_LENGTH - 1) {
       inputRefs.current[index + 1]?.focus();
@@ -233,7 +234,12 @@ function AuthPage() {
                 focus:ring-2 focus:ring-ring focus:border-primary
                 disabled:opacity-60 disabled:cursor-not-allowed
               `}
-              style={{ caretColor: "transparent" }}
+              style={{
+                caretColor: "transparent",
+                ...(digit && shown !== i
+                  ? { color: "transparent", textShadow: "0 0 10px var(--foreground)" }
+                  : {}),
+              }}
             />
           ))}
         </div>
