@@ -94,9 +94,17 @@ function AdminPage() {
   const Icon = SECTIONS[activeSection].icon;
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+    <div className="relative min-h-screen bg-background">
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 top-0 h-[30rem] overflow-hidden pointer-events-none"
+      >
+        <div className="aurora aurora-a" />
+        <div className="aurora aurora-b" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background" />
+      </div>
+      <header className="sticky top-4 z-40 px-4">
+        <div className="glass max-w-6xl mx-auto rounded-full pl-5 pr-2 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3 sm:gap-5 min-w-0">
             <Link
               to="/"
@@ -105,7 +113,9 @@ function AdminPage() {
               <ArrowLeft className="w-4 h-4" /> <span className="hidden sm:inline">View site</span>
             </Link>
             <span className="h-5 w-px bg-border" />
-            <span className="text-sm font-semibold tracking-tight">Admin Panel</span>
+            <span className="text-sm font-semibold tracking-tight">
+              Admin <span className="text-gradient">Panel</span>
+            </span>
             {anyDirty && (
               <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-current" /> Unsaved changes
@@ -116,7 +126,7 @@ function AdminPage() {
             <ThemeToggle />
             <button
               onClick={handleSignOut}
-              className="text-xs flex items-center gap-1.5 h-9 px-3.5 rounded-full card-soft hover:bg-accent transition-colors"
+              className="text-sm flex items-center gap-1.5 h-10 px-4 rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
             >
               <LogOut className="w-3.5 h-3.5" /> Sign out
             </button>
@@ -124,7 +134,7 @@ function AdminPage() {
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 lg:py-10 grid lg:grid-cols-[230px_1fr] gap-6 lg:gap-10">
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-8 lg:py-12 grid lg:grid-cols-[230px_1fr] gap-6 lg:gap-10">
         <nav
           aria-label="Sections"
           className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible lg:sticky lg:top-24 lg:self-start -mx-4 px-4 sm:mx-0 sm:px-0 pb-1"
@@ -139,7 +149,7 @@ function AdminPage() {
                 aria-current={active ? "page" : undefined}
                 className={`relative flex items-center gap-2.5 text-left text-sm px-3 py-2.5 rounded-xl transition-all duration-200 whitespace-nowrap ${
                   active
-                    ? "bg-primary text-primary-foreground shadow-sm"
+                    ? "bg-foreground/[0.08] text-foreground font-medium [&_svg]:text-brand"
                     : "hover:bg-accent text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -254,10 +264,10 @@ function SectionEditor<K extends SectionKey>({
     "Save failed. Please sign in again and retry.";
 
   return (
-    <div className="card-soft rounded-2xl overflow-hidden">
+    <div className="card-soft gradient-border rounded-2xl overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-4 p-5 sm:p-7 border-b border-border">
         <div className="flex items-center gap-3.5 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand/20 to-brand-2/15 text-brand flex items-center justify-center shrink-0">
             <Icon className="w-[18px] h-[18px]" />
           </div>
           <div className="min-w-0">

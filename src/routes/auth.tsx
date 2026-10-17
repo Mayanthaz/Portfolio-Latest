@@ -32,7 +32,9 @@ function AuthPage() {
       if (isAdmin && mounted) navigate({ to: "/admin" });
     }
     void checkSession();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [navigate]);
 
   // Focus first input on mount
@@ -169,23 +171,30 @@ function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div className="relative min-h-screen flex items-center justify-center bg-background px-4 overflow-hidden">
+      <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
+        <div className="aurora aurora-a" />
+        <div className="aurora aurora-b" />
+      </div>
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
 
-      <div className="w-full max-w-md card-soft rounded-2xl p-8">
-        <Link to="/" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+      <div className="relative w-full max-w-md card-soft gradient-border rounded-3xl p-8 sm:p-10">
+        <Link
+          to="/"
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
           ← Back to site
         </Link>
 
-        <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+        <p className="mt-4 font-mono text-xs uppercase tracking-[0.2em] text-brand">
           Mayantha Portfolio
         </p>
-        <h1 className="mt-2 text-2xl font-semibold">Admin access</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Enter your passcode to continue.
-        </p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+          Admin <span className="text-gradient">access</span>
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">Enter your passcode to continue.</p>
 
         {/* Passcode input boxes */}
         <div
@@ -195,7 +204,9 @@ function AuthPage() {
           {digits.map((digit, i) => (
             <input
               key={i}
-              ref={(el) => { inputRefs.current[i] = el; }}
+              ref={(el) => {
+                inputRefs.current[i] = el;
+              }}
               type="text"
               inputMode="numeric"
               maxLength={1}
@@ -210,13 +221,14 @@ function AuthPage() {
                 rounded-xl border text-center text-lg font-semibold
                 transition-all duration-200 outline-none
                 bg-muted
-                ${success
-                  ? "border-emerald-500 text-emerald-500 dark:border-emerald-400 dark:text-emerald-400"
-                  : error
-                    ? "border-destructive text-destructive"
-                    : digit
-                      ? "border-primary text-foreground shadow-sm shadow-primary/20"
-                      : "border-border text-foreground"
+                ${
+                  success
+                    ? "border-emerald-500 text-emerald-500 dark:border-emerald-400 dark:text-emerald-400"
+                    : error
+                      ? "border-destructive text-destructive"
+                      : digit
+                        ? "border-primary text-foreground shadow-sm shadow-primary/20"
+                        : "border-border text-foreground"
                 }
                 focus:ring-2 focus:ring-ring focus:border-primary
                 disabled:opacity-60 disabled:cursor-not-allowed
@@ -234,9 +246,7 @@ function AuthPage() {
               Verifying…
             </p>
           )}
-          {error && !loading && (
-            <p className="text-xs text-destructive">{error}</p>
-          )}
+          {error && !loading && <p className="text-xs text-destructive">{error}</p>}
           {success && (
             <p className="text-xs text-emerald-600 dark:text-emerald-400">
               Access granted — redirecting…
