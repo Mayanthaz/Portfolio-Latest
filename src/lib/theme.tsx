@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { Sun, Moon } from "lucide-react";
 
 export function useTheme() {
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const storedTheme = localStorage.getItem("theme");
-    setTheme(storedTheme === "light" ? "light" : "dark");
+    setTheme(storedTheme === "dark" ? "dark" : "light");
     setReady(true);
   }, []);
 
