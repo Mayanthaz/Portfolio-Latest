@@ -1,15 +1,38 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   siteContentQueryOptions,
   useSiteContent,
+  DEFAULT_CONTENT,
   SECTION_KEYS,
   type SiteContentMap,
 } from "@/lib/site-content";
 import { ThemeToggle } from "@/lib/theme";
-import { ArrowLeft, ImagePlus, LogOut, Save, Plus, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowDown,
+  ArrowLeft,
+  ArrowUp,
+  Award,
+  Check,
+  FolderGit2,
+  GraduationCap,
+  ImagePlus,
+  Loader2,
+  LogOut,
+  Mail,
+  Plus,
+  RotateCcw,
+  Save,
+  Sparkles,
+  Trash2,
+  User,
+  Wrench,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -19,44 +42,81 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
 });
 
-const SECTION_LABELS: Record<(typeof SECTION_KEYS)[number], string> = {
-  hero: "Hero",
-  profile: "Profile",
-  skills: "Skills",
-  projects: "Projects",
-  education: "Education",
-  certifications: "Certifications",
-  contact: "Contact",
+type SectionKey = (typeof SECTION_KEYS)[number];
+
+const SECTIONS: Record<SectionKey, { label: string; hint: string; icon: LucideIcon }> = {
+  hero: { label: "Hero", hint: "Name, tagline, images and headline stats.", icon: Sparkles },
+  profile: { label: "Profile", hint: "The about-me block and role focus.", icon: User },
+  skills: { label: "Skills", hint: "Skill categories shown as cards.", icon: Wrench },
+  projects: { label: "Projects", hint: "Selected work, shown in order.", icon: FolderGit2 },
+  education: { label: "Education", hint: "Degrees, diplomas and results.", icon: GraduationCap },
+  certifications: { label: "Certifications", hint: "Certificates and badges.", icon: Award },
+  contact: { label: "Contact", hint: "Links and details visitors can use.", icon: Mail },
 };
+
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+function without<T extends object>(obj: T, key: keyof T): T {
+  const next = { ...obj };
+  delete next[key];
+  return next;
+}
 
 function AdminPage() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const { data } = useSiteContent();
-  const [activeSection, setActiveSection] = useState<(typeof SECTION_KEYS)[number]>("hero");
+  const [activeSection, setActiveSection] = useState<SectionKey>("hero");
+  const [drafts, setDrafts] = useState<Partial<SiteContentMap>>({});
+
+  const published = useMemo(
+    () => ({ ...DEFAULT_CONTENT, ...(data ?? {}) }) as SiteContentMap,
+    [data],
+  );
+  const isDirty = (key: SectionKey) => key in drafts && !same(drafts[key], published[key]);
+  const anyDirty = SECTION_KEYS.some(isDirty);
+
+  useEffect(() => {
+    if (!anyDirty) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [anyDirty]);
 
   async function handleSignOut() {
+    if (anyDirty && !window.confirm("You have unsaved changes. Sign out anyway?")) return;
+    sessionStorage.removeItem("admin_authenticated");
     await supabase.auth.signOut();
+    qc.clear();
     navigate({ to: "/auth" });
   }
 
+  const Icon = SECTIONS[activeSection].icon;
+
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-background/80 backdrop-blur sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      <header className="border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3 sm:gap-5 min-w-0">
             <Link
               to="/"
-              className="text-sm flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+              className="text-sm flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
             >
-              <ArrowLeft className="w-4 h-4" /> View site
+              <ArrowLeft className="w-4 h-4" /> <span className="hidden sm:inline">View site</span>
             </Link>
-            <span className="text-sm font-medium">Admin Panel</span>
+            <span className="h-5 w-px bg-border" />
+            <span className="text-sm font-semibold tracking-tight">Admin Panel</span>
+            {anyDirty && (
+              <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-current" /> Unsaved changes
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <button
               onClick={handleSignOut}
-              className="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-full card-soft hover:bg-accent"
+              className="text-xs flex items-center gap-1.5 h-9 px-3.5 rounded-full card-soft hover:bg-accent transition-colors"
             >
               <LogOut className="w-3.5 h-3.5" /> Sign out
             </button>
@@ -64,29 +124,54 @@ function AdminPage() {
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-6 py-8 grid lg:grid-cols-[220px_1fr] gap-8">
-        <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible">
-          {SECTION_KEYS.map((key) => (
-            <button
-              key={key}
-              onClick={() => setActiveSection(key)}
-              className={`text-left text-sm px-3 py-2 rounded-lg transition whitespace-nowrap ${
-                activeSection === key
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-accent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {SECTION_LABELS[key]}
-            </button>
-          ))}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 lg:py-10 grid lg:grid-cols-[230px_1fr] gap-6 lg:gap-10">
+        <nav
+          aria-label="Sections"
+          className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible lg:sticky lg:top-24 lg:self-start -mx-4 px-4 sm:mx-0 sm:px-0 pb-1"
+        >
+          {SECTION_KEYS.map((key) => {
+            const { label, icon: NavIcon } = SECTIONS[key];
+            const active = activeSection === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setActiveSection(key)}
+                aria-current={active ? "page" : undefined}
+                className={`relative flex items-center gap-2.5 text-left text-sm px-3 py-2.5 rounded-xl transition-all duration-200 whitespace-nowrap ${
+                  active
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "hover:bg-accent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <NavIcon className="w-4 h-4 shrink-0" />
+                {label}
+                {isDirty(key) && (
+                  <span
+                    className="ml-auto h-1.5 w-1.5 rounded-full bg-amber-500"
+                    title="Unsaved changes"
+                  />
+                )}
+              </button>
+            );
+          })}
         </nav>
 
         <div className="min-w-0">
-          {data && (
+          {!data ? (
+            <div className="card-soft rounded-2xl p-10 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading content…
+            </div>
+          ) : (
             <SectionEditor
               key={activeSection}
               section={activeSection}
-              value={data[activeSection]}
+              icon={Icon}
+              isPublished={activeSection in data}
+              draft={drafts[activeSection] ?? published[activeSection]}
+              dirty={isDirty(activeSection)}
+              onChange={(next) => setDrafts((d) => ({ ...d, [activeSection]: next }))}
+              onDiscard={() => setDrafts((d) => without(d, activeSection))}
+              onSaved={() => setDrafts((d) => without(d, activeSection))}
             />
           )}
         </div>
@@ -95,198 +180,278 @@ function AdminPage() {
   );
 }
 
-function SectionEditor<K extends (typeof SECTION_KEYS)[number]>({
+function SectionEditor<K extends SectionKey>({
   section,
-  value,
+  icon: Icon,
+  isPublished,
+  draft,
+  dirty,
+  onChange,
+  onDiscard,
+  onSaved,
 }: {
   section: K;
-  value: SiteContentMap[K] | undefined;
+  icon: LucideIcon;
+  isPublished: boolean;
+  draft: SiteContentMap[K];
+  dirty: boolean;
+  onChange: (v: SiteContentMap[K]) => void;
+  onDiscard: () => void;
+  onSaved: () => void;
 }) {
   const qc = useQueryClient();
-  const [draft, setDraft] = useState<SiteContentMap[K] | undefined>(value);
   const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    setDraft(value);
-    setSaved(false);
-  }, [value, section]);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(savedTimer.current), []);
 
   const save = useMutation({
-    mutationFn: async (next: unknown) => {
+    mutationFn: async (next: SiteContentMap[K]) => {
       const { error } = await supabase
         .from("site_content")
         .upsert({ section, value: next as never });
       if (error) throw error;
+      return next;
     },
-    onSuccess: () => {
+    onSuccess: (next) => {
+      qc.setQueryData<Partial<SiteContentMap>>(["site_content"], (old) => ({
+        ...(old ?? {}),
+        [section]: next,
+      }));
       qc.invalidateQueries({ queryKey: ["site_content"] });
+      onSaved();
       setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      clearTimeout(savedTimer.current);
+      savedTimer.current = setTimeout(() => setSaved(false), 2500);
     },
   });
 
-  if (!draft) return <div className="text-muted-foreground text-sm">Loading…</div>;
+  const canSave = (dirty || !isPublished) && !save.isPending;
+  const saveRef = useRef<() => void>(() => {});
+  saveRef.current = () => {
+    if (canSave) save.mutate(draft);
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        saveRef.current();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const set = (v: unknown) => onChange(v as SiteContentMap[K]);
+  const errorMessage =
+    save.error instanceof Error && save.error.message
+      ? save.error.message
+      : "Save failed. Please sign in again and retry.";
 
   return (
-    <div className="card-soft rounded-2xl p-6 sm:p-8">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-semibold">{SECTION_LABELS[section]}</h2>
-          <p className="text-xs text-muted-foreground mt-1">Edit the {section} template.</p>
+    <div className="card-soft rounded-2xl overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-4 p-5 sm:p-7 border-b border-border">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
+            <Icon className="w-[18px] h-[18px]" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-xl font-semibold leading-tight">{SECTIONS[section].label}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{SECTIONS[section].hint}</p>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          {saved && <span className="text-xs text-emerald-600 dark:text-emerald-400">Saved ✓</span>}
-          {save.error && (
-            <span className="max-w-64 text-right text-xs text-destructive">
-              Save failed. Please sign in again and retry.
-            </span>
+        <div className="flex items-center gap-2">
+          {dirty && (
+            <button
+              onClick={onDiscard}
+              disabled={save.isPending}
+              className="h-9 px-3.5 rounded-full text-sm flex items-center gap-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" /> Discard
+            </button>
           )}
           <button
-            disabled={save.isPending}
+            disabled={!canSave}
             onClick={() => save.mutate(draft)}
-            className="rounded-full bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-60 flex items-center gap-2"
+            title="Save (Ctrl+S)"
+            className="h-9 rounded-full bg-primary text-primary-foreground px-5 text-sm font-medium hover:opacity-90 active:scale-[0.97] transition disabled:opacity-40 disabled:pointer-events-none flex items-center gap-2"
           >
-            <Save className="w-4 h-4" /> {save.isPending ? "Saving…" : "Save"}
+            {save.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : saved ? (
+              <Check className="w-4 h-4" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            {save.isPending ? "Saving…" : saved ? "Saved" : "Save changes"}
           </button>
         </div>
       </div>
 
-      {/* Section-specific forms */}
-      {section === "hero" && (
-        <HeroForm value={draft as SiteContentMap["hero"]} onChange={(v) => setDraft(v as never)} />
+      {(save.error || !isPublished) && (
+        <div
+          role="alert"
+          className={`mx-5 sm:mx-7 mt-5 flex items-start gap-2.5 rounded-xl border px-3.5 py-2.5 text-xs ${
+            save.error
+              ? "border-destructive/30 bg-destructive/10 text-destructive"
+              : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+          }`}
+        >
+          <AlertCircle className="w-4 h-4 shrink-0 mt-px" />
+          {save.error
+            ? errorMessage
+            : "This section isn't published yet. The site is showing built-in defaults — save to publish your version."}
+        </div>
       )}
-      {section === "profile" && (
-        <ProfileForm
-          value={draft as SiteContentMap["profile"]}
-          onChange={(v) => setDraft(v as never)}
-        />
-      )}
-      {section === "skills" && (
-        <ListForm
-          value={(draft as SiteContentMap["skills"]).items}
-          empty={{ label: "Category", skills: [] as string[] }}
-          onChange={(items) => setDraft({ items } as never)}
-          render={(item, set) => (
-            <div className="space-y-3">
-              <TextField
-                label="Category"
-                value={item.label}
-                onChange={(v) => set({ ...item, label: v })}
-              />
-              <ArrayField
-                label="Skills"
-                value={item.skills}
-                onChange={(skills) => set({ ...item, skills })}
-              />
-            </div>
-          )}
-        />
-      )}
-      {section === "projects" && (
-        <ListForm
-          value={(draft as SiteContentMap["projects"]).items}
-          empty={{ name: "", tag: "", description: "", tech: [] as string[], inProgress: false }}
-          onChange={(items) => setDraft({ items } as never)}
-          render={(item, set) => (
-            <div className="space-y-3">
-              <TextField
-                label="Name"
-                value={item.name}
-                onChange={(v) => set({ ...item, name: v })}
-              />
-              <TextField label="Tag" value={item.tag} onChange={(v) => set({ ...item, tag: v })} />
-              <TextField
-                label="Description"
-                textarea
-                value={item.description}
-                onChange={(v) => set({ ...item, description: v })}
-              />
-              <ArrayField
-                label="Tech"
-                value={item.tech}
-                onChange={(tech) => set({ ...item, tech })}
-              />
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={item.inProgress}
-                  onChange={(e) => set({ ...item, inProgress: e.target.checked })}
+
+      <div className="p-5 sm:p-7">
+        {section === "hero" && <HeroForm value={draft as SiteContentMap["hero"]} onChange={set} />}
+        {section === "profile" && (
+          <ProfileForm value={draft as SiteContentMap["profile"]} onChange={set} />
+        )}
+        {section === "skills" && (
+          <ListForm
+            noun="category"
+            value={(draft as SiteContentMap["skills"]).items}
+            empty={{ label: "", skills: [] as string[] }}
+            title={(item) => item.label}
+            onChange={(items) => set({ items })}
+            render={(item, upd) => (
+              <div className="space-y-4">
+                <TextField
+                  label="Category"
+                  value={item.label}
+                  onChange={(v) => upd({ ...item, label: v })}
                 />
-                In progress
-              </label>
-            </div>
-          )}
-        />
-      )}
-      {section === "education" && (
-        <ListForm
-          value={(draft as SiteContentMap["education"]).items}
-          empty={{ title: "", org: "", period: "", notes: "" }}
-          onChange={(items) => setDraft({ items } as never)}
-          render={(item, set) => (
-            <div className="space-y-3">
-              <TextField
-                label="Title"
-                value={item.title}
-                onChange={(v) => set({ ...item, title: v })}
-              />
-              <TextField
-                label="Organisation"
-                value={item.org}
-                onChange={(v) => set({ ...item, org: v })}
-              />
-              <TextField
-                label="Period"
-                value={item.period}
-                onChange={(v) => set({ ...item, period: v })}
-              />
-              <TextField
-                label="Notes"
-                textarea
-                value={item.notes}
-                onChange={(v) => set({ ...item, notes: v })}
-              />
-            </div>
-          )}
-        />
-      )}
-      {section === "certifications" && (
-        <ListForm
-          value={(draft as SiteContentMap["certifications"]).items}
-          empty={{ title: "", issuer: "", year: "", url: "" }}
-          onChange={(items) => setDraft({ items } as never)}
-          render={(item, set) => (
-            <div className="space-y-3">
-              <TextField
-                label="Title"
-                value={item.title}
-                onChange={(v) => set({ ...item, title: v })}
-              />
-              <TextField
-                label="Issuer"
-                value={item.issuer}
-                onChange={(v) => set({ ...item, issuer: v })}
-              />
-              <TextField
-                label="Year"
-                value={item.year}
-                onChange={(v) => set({ ...item, year: v })}
-              />
-              <TextField
-                label="URL (optional)"
-                value={item.url}
-                onChange={(v) => set({ ...item, url: v })}
-              />
-            </div>
-          )}
-        />
-      )}
-      {section === "contact" && (
-        <ContactForm
-          value={draft as SiteContentMap["contact"]}
-          onChange={(v) => setDraft(v as never)}
-        />
-      )}
+                <ArrayField
+                  label="Skills"
+                  value={item.skills}
+                  onChange={(skills) => upd({ ...item, skills })}
+                />
+              </div>
+            )}
+          />
+        )}
+        {section === "projects" && (
+          <ListForm
+            noun="project"
+            value={(draft as SiteContentMap["projects"]).items}
+            empty={{ name: "", tag: "", description: "", tech: [] as string[], inProgress: false }}
+            title={(item) => item.name}
+            onChange={(items) => set({ items })}
+            render={(item, upd) => (
+              <div className="space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <TextField
+                    label="Name"
+                    value={item.name}
+                    onChange={(v) => upd({ ...item, name: v })}
+                  />
+                  <TextField
+                    label="Tag"
+                    value={item.tag}
+                    onChange={(v) => upd({ ...item, tag: v })}
+                  />
+                </div>
+                <TextField
+                  label="Description"
+                  textarea
+                  value={item.description}
+                  onChange={(v) => upd({ ...item, description: v })}
+                />
+                <ArrayField
+                  label="Tech"
+                  value={item.tech}
+                  onChange={(tech) => upd({ ...item, tech })}
+                />
+                <label className="flex items-center gap-2.5 text-sm cursor-pointer w-fit">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-[var(--primary)]"
+                    checked={item.inProgress}
+                    onChange={(e) => upd({ ...item, inProgress: e.target.checked })}
+                  />
+                  Mark as in progress
+                </label>
+              </div>
+            )}
+          />
+        )}
+        {section === "education" && (
+          <ListForm
+            noun="entry"
+            value={(draft as SiteContentMap["education"]).items}
+            empty={{ title: "", org: "", period: "", notes: "" }}
+            title={(item) => item.title}
+            onChange={(items) => set({ items })}
+            render={(item, upd) => (
+              <div className="space-y-4">
+                <TextField
+                  label="Title"
+                  value={item.title}
+                  onChange={(v) => upd({ ...item, title: v })}
+                />
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <TextField
+                    label="Organisation"
+                    value={item.org}
+                    onChange={(v) => upd({ ...item, org: v })}
+                  />
+                  <TextField
+                    label="Period"
+                    value={item.period}
+                    onChange={(v) => upd({ ...item, period: v })}
+                  />
+                </div>
+                <TextField
+                  label="Notes"
+                  textarea
+                  value={item.notes}
+                  onChange={(v) => upd({ ...item, notes: v })}
+                />
+              </div>
+            )}
+          />
+        )}
+        {section === "certifications" && (
+          <ListForm
+            noun="certification"
+            value={(draft as SiteContentMap["certifications"]).items}
+            empty={{ title: "", issuer: "", year: "", url: "" }}
+            title={(item) => item.title}
+            onChange={(items) => set({ items })}
+            render={(item, upd) => (
+              <div className="space-y-4">
+                <TextField
+                  label="Title"
+                  value={item.title}
+                  onChange={(v) => upd({ ...item, title: v })}
+                />
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <TextField
+                    label="Issuer"
+                    value={item.issuer}
+                    onChange={(v) => upd({ ...item, issuer: v })}
+                  />
+                  <TextField
+                    label="Year"
+                    value={item.year}
+                    onChange={(v) => upd({ ...item, year: v })}
+                  />
+                </div>
+                <TextField
+                  label="URL (optional)"
+                  value={item.url}
+                  onChange={(v) => upd({ ...item, url: v })}
+                />
+              </div>
+            )}
+          />
+        )}
+        {section === "contact" && (
+          <ContactForm value={draft as SiteContentMap["contact"]} onChange={set} />
+        )}
+      </div>
     </div>
   );
 }
@@ -298,27 +463,39 @@ function TextField({
   value,
   onChange,
   textarea,
+  placeholder,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   textarea?: boolean;
+  placeholder?: string;
 }) {
+  const id = useMemo(() => `f-${Math.random().toString(36).slice(2, 9)}`, []);
   return (
     <div>
-      <label className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</label>
+      <label
+        htmlFor={id}
+        className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
+      >
+        {label}
+      </label>
       {textarea ? (
         <textarea
-          value={value}
+          id={id}
+          value={value ?? ""}
+          placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
-          rows={3}
-          className="mt-1 w-full rounded-xl bg-muted border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-y"
+          rows={4}
+          className="field mt-1.5 resize-y leading-relaxed"
         />
       ) : (
         <input
-          value={value}
+          id={id}
+          value={value ?? ""}
+          placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
-          className="mt-1 w-full rounded-xl bg-muted border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          className="field mt-1.5"
         />
       )}
     </div>
@@ -334,36 +511,59 @@ function ArrayField({
   value: string[];
   onChange: (v: string[]) => void;
 }) {
+  const [text, setText] = useState("");
+
+  function commit(raw: string) {
+    const parts = raw
+      .split(",")
+      .map((p) => p.trim())
+      .filter((p) => p && !value.includes(p));
+    if (parts.length) onChange([...value, ...parts]);
+    setText("");
+  }
+
   return (
     <div>
-      <label className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</label>
-      <div className="mt-1 flex flex-wrap gap-1.5 items-center p-2 rounded-xl bg-muted border border-border min-h-[44px]">
+      <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </label>
+      <div className="field mt-1.5 flex flex-wrap gap-1.5 items-center !p-2 min-h-[46px]">
         {value.map((v, i) => (
           <span
-            key={i}
-            className="text-xs px-2 py-1 rounded-md bg-background flex items-center gap-1.5"
+            key={`${v}-${i}`}
+            className="text-xs pl-2.5 pr-1 py-1 rounded-full bg-muted flex items-center gap-1"
           >
             {v}
-            <button onClick={() => onChange(value.filter((_, idx) => idx !== i))}>
-              <Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive" />
+            <button
+              type="button"
+              aria-label={`Remove ${v}`}
+              onClick={() => onChange(value.filter((_, idx) => idx !== i))}
+              className="w-4 h-4 rounded-full flex items-center justify-center text-muted-foreground hover:bg-destructive/15 hover:text-destructive transition-colors"
+            >
+              <X className="w-3 h-3" />
             </button>
           </span>
         ))}
         <input
-          placeholder="Type and press Enter"
+          value={text}
+          placeholder={value.length ? "Add more…" : "Type and press Enter"}
+          onChange={(e) => {
+            if (e.target.value.endsWith(",")) commit(e.target.value);
+            else setText(e.target.value);
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
-              const v = e.currentTarget.value.trim();
-              if (v) {
-                onChange([...value, v]);
-                e.currentTarget.value = "";
-              }
+              commit(text);
+            } else if (e.key === "Backspace" && !text && value.length) {
+              onChange(value.slice(0, -1));
             }
           }}
-          className="flex-1 min-w-[120px] bg-transparent text-sm focus:outline-none px-1"
+          onBlur={() => text.trim() && commit(text)}
+          className="flex-1 min-w-[120px] bg-transparent text-sm focus:outline-none px-1.5 py-1"
         />
       </div>
+      <p className="mt-1 text-[11px] text-muted-foreground">Press Enter or comma to add.</p>
     </div>
   );
 }
@@ -373,33 +573,105 @@ function ListForm<T>({
   onChange,
   render,
   empty,
+  noun = "item",
+  title,
 }: {
   value: T[];
   onChange: (v: T[]) => void;
   render: (item: T, set: (next: T) => void) => React.ReactNode;
   empty: T;
+  noun?: string;
+  title?: (item: T) => string;
 }) {
+  const [confirming, setConfirming] = useState<number | null>(null);
+  const items = value ?? [];
+
+  function move(i: number, dir: -1 | 1) {
+    const j = i + dir;
+    if (j < 0 || j >= items.length) return;
+    const next = [...items];
+    [next[i], next[j]] = [next[j], next[i]];
+    onChange(next);
+    setConfirming(null);
+  }
+
+  const iconBtn =
+    "w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-colors";
+
   return (
     <div className="space-y-4">
-      {value.map((item, i) => (
-        <div key={i} className="rounded-xl border border-border p-4 bg-muted/30">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs text-muted-foreground">Item {i + 1}</span>
-            <button
-              onClick={() => onChange(value.filter((_, idx) => idx !== i))}
-              className="text-xs flex items-center gap-1 text-muted-foreground hover:text-destructive"
-            >
-              <Trash2 className="w-3.5 h-3.5" /> Remove
-            </button>
+      {items.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-6">No {noun}s yet.</p>
+      )}
+      {items.map((item, i) => (
+        <div key={i} className="rounded-xl border border-border p-4 sm:p-5 bg-muted/30">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <span className="text-xs font-medium text-muted-foreground truncate">
+              <span className="inline-flex items-center justify-center h-5 min-w-5 px-1 mr-2 rounded-md bg-muted text-[10px]">
+                {i + 1}
+              </span>
+              {title?.(item) || `New ${noun}`}
+            </span>
+            <div className="flex items-center gap-0.5 shrink-0">
+              <button
+                type="button"
+                aria-label="Move up"
+                disabled={i === 0}
+                onClick={() => move(i, -1)}
+                className={iconBtn}
+              >
+                <ArrowUp className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                aria-label="Move down"
+                disabled={i === items.length - 1}
+                onClick={() => move(i, 1)}
+                className={iconBtn}
+              >
+                <ArrowDown className="w-3.5 h-3.5" />
+              </button>
+              {confirming === i ? (
+                <span className="flex items-center gap-1 ml-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(items.filter((_, idx) => idx !== i));
+                      setConfirming(null);
+                    }}
+                    className="h-7 px-2.5 rounded-lg text-xs bg-destructive text-destructive-foreground hover:opacity-90"
+                  >
+                    Remove
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirming(null)}
+                    className="h-7 px-2 rounded-lg text-xs text-muted-foreground hover:bg-accent"
+                  >
+                    Cancel
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  aria-label={`Remove ${noun}`}
+                  onClick={() => setConfirming(i)}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
-          {render(item, (next) => onChange(value.map((it, idx) => (idx === i ? next : it))))}
+          {render(item, (next) => onChange(items.map((it, idx) => (idx === i ? next : it))))}
         </div>
       ))}
       <button
-        onClick={() => onChange([...value, structuredClone(empty)])}
-        className="w-full rounded-xl border border-dashed border-border py-3 text-sm text-muted-foreground hover:bg-accent flex items-center justify-center gap-2"
+        type="button"
+        onClick={() => onChange([...items, structuredClone(empty)])}
+        className="w-full rounded-xl border border-dashed border-border py-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground hover:border-foreground/30 transition-colors flex items-center justify-center gap-2"
       >
-        <Plus className="w-4 h-4" /> Add item
+        <Plus className="w-4 h-4" /> Add {noun}
       </button>
     </div>
   );
@@ -488,19 +760,19 @@ function HeroForm({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div>
-        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">
+        <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Header profile image
         </label>
-        <div className="mt-2 flex flex-wrap items-center gap-4 rounded-xl border border-border bg-muted/30 p-4">
+        <div className="mt-1.5 flex flex-wrap items-center gap-4 rounded-xl border border-border bg-muted/30 p-4">
           <img
             src={value.avatarUrl || "/favicon.svg"}
             alt="Header profile preview"
             className="h-16 w-16 rounded-full border border-border bg-background object-cover"
           />
           <div className="min-w-0 flex-1">
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 active:scale-[0.97] transition">
               <ImagePlus className="h-4 w-4" />
               {uploading ? "Uploading…" : "Choose image"}
               <input
@@ -524,17 +796,17 @@ function HeroForm({
         </div>
       </div>
       <div>
-        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">
+        <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Browser tab icon
         </label>
-        <div className="mt-2 flex flex-wrap items-center gap-4 rounded-xl border border-border bg-muted/30 p-4">
+        <div className="mt-1.5 flex flex-wrap items-center gap-4 rounded-xl border border-border bg-muted/30 p-4">
           <img
             src={value.siteIconUrl || "/favicon.svg"}
             alt="Browser tab icon preview"
             className="h-12 w-12 rounded-full border border-border bg-background object-cover"
           />
           <div className="min-w-0 flex-1">
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 active:scale-[0.97] transition">
               <ImagePlus className="h-4 w-4" />
               {iconUploading ? "Uploading…" : "Choose icon"}
               <input
@@ -583,15 +855,17 @@ function HeroForm({
         onChange={(v) => onChange({ ...value, location: v })}
       />
       <div>
-        <label className="text-[11px] uppercase tracking-wider text-muted-foreground">
+        <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Stat cards
         </label>
         <ListForm
-          value={value.stats}
+          noun="stat card"
+          title={(item) => item.value}
+          value={value.stats ?? []}
           empty={{ value: "", label: "" }}
           onChange={(stats) => onChange({ ...value, stats })}
           render={(item, set) => (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid sm:grid-cols-2 gap-4">
               <TextField
                 label="Value"
                 value={item.value}
@@ -618,7 +892,7 @@ function ProfileForm({
   onChange: (v: SiteContentMap["profile"]) => void;
 }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <TextField
         label="Eyebrow"
         value={value.eyebrow}
@@ -657,7 +931,7 @@ function ContactForm({
   onChange: (v: SiteContentMap["contact"]) => void;
 }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <TextField
         label="Email"
         value={value.email}

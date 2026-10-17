@@ -18,124 +18,8 @@ import {
   ExternalLink,
 } from "lucide-react";
 import avatarImg from "@/assets/avatar.jpg";
-import { useSiteContent, type SiteContentMap } from "@/lib/site-content";
+import { useSiteContent, DEFAULT_CONTENT as FALLBACK } from "@/lib/site-content";
 
-const FALLBACK: SiteContentMap = {
-  hero: {
-    name: "Mayantha Udayanga",
-    eyebrow: "Software Engineering Undergraduate",
-    tagline:
-      "I build clean full-stack, mobile, desktop, and database-driven applications with a focus on practical workflows, reliable APIs, and polished user interfaces.",
-    location: "Sri Lanka",
-    stats: [
-      { value: "4", label: "Product builds" },
-      { value: "Full stack", label: "Spring Boot, Node.js, .NET" },
-      { value: "Intern-ready", label: "Available immediately" },
-    ],
-  },
-  profile: {
-    eyebrow: "Profile",
-    title: "Intern-ready engineer with a product mindset.",
-    body: "Second-year Software Engineering undergraduate at the National Institute of Business Management. Experienced in academic full-stack, mobile, desktop, database-driven and API-based application development. I care about clean code, OOP, MVC structure, REST integration, and shipping reliable features within team workflows.",
-    roleFocus: "Full Stack Software Engineering Intern",
-    coreStack: "Java · Spring Boot · Node.js · .NET · SQL · React",
-  },
-  skills: {
-    items: [
-      { label: "Languages", skills: ["Java", "JavaScript", "SQL", "C#", "C", "C++"] },
-      { label: "Backend", skills: ["Spring Boot", "Node.js", ".NET", "REST APIs", "MVC", "CRUD"] },
-      { label: "Frontend", skills: ["HTML", "CSS", "JavaScript", "Responsive UI"] },
-      { label: "Databases", skills: ["SQL", "Schema Design", "Queries", "Integration"] },
-      { label: "Tools", skills: ["Git", "GitHub", "VS Code", "Android Studio", "Docker"] },
-      { label: "Cloud", skills: ["AWS Solutions Architect (in progress)"] },
-    ],
-  },
-  projects: {
-    items: [
-      {
-        name: "LUXE",
-        tag: "Full-Stack Hotel Management",
-        description: "Java + Spring Boot hotel management system with REST APIs and SQL.",
-        tech: ["Java", "Spring Boot", "REST", "SQL", "MVC"],
-        inProgress: false,
-      },
-      {
-        name: "InstaTute",
-        tag: "Learning Management Platform",
-        description: "Web-based LMS connecting institutions, tutors, and students.",
-        tech: ["Full-Stack", "Web App", "DB Design"],
-        inProgress: false,
-      },
-      {
-        name: "EZKEY",
-        tag: "Digital Product Mobile App",
-        description:
-          "Mobile app for digital product sales with listing and secure purchasing flow.",
-        tech: ["Android", "Mobile", "CRUD"],
-        inProgress: true,
-      },
-      {
-        name: "Library Management",
-        tag: "Windows Desktop Application",
-        description: "Desktop application to manage books, records and administrative tasks.",
-        tech: ["C#", ".NET", "Desktop", "SQL"],
-        inProgress: false,
-      },
-    ],
-  },
-  education: {
-    items: [
-      {
-        title: "BSc (Hons) Software Engineering",
-        org: "National Institute of Business Management",
-        period: "Undergraduate",
-        notes: "Pursuing honours degree alongside applied projects.",
-      },
-      {
-        title: "Higher National Diploma in Software Engineering",
-        org: "NIBM",
-        period: "2026 – Present",
-        notes: "Enterprise App Development 2, Mobile, DSA, IoT & Robotics.",
-      },
-      {
-        title: "Diploma in Software Engineering",
-        org: "NIBM · GPA 3.3 / 4.0",
-        period: "2024 – 2025",
-        notes: "Full-Stack Web, Database Management, Enterprise App Dev 1.",
-      },
-      {
-        title: "G.C.E. A/L — Mathematics Stream",
-        org: "General English: B · ICT: B",
-        period: "2023",
-        notes: "",
-      },
-    ],
-  },
-  certifications: {
-    items: [
-      { title: "Introduction to Cybersecurity", issuer: "Cisco", year: "2024", url: "" },
-      {
-        title: "Share Data Using Google Data Analytics",
-        issuer: "Google Cloud",
-        year: "2024",
-        url: "",
-      },
-      {
-        title: "AWS Solutions Architect — Associate",
-        issuer: "Amazon Web Services",
-        year: "In progress",
-        url: "",
-      },
-    ],
-  },
-  contact: {
-    email: "mayantha743@gmail.com",
-    phone: "+94 78 368 6802",
-    linkedin: "https://linkedin.com/in/mayanthaudayanga",
-    github: "https://github.com/Mayanthaz",
-    cvUrl: "/Mayantha_Udayanga_CV.pdf",
-  },
-};
 import { ThemeToggle } from "@/lib/theme";
 
 /* Small inline brand SVGs (lucide-react in this project lacks Github/Linkedin) */
@@ -159,13 +43,35 @@ const skillIconMap: Record<string, React.ComponentType<{ className?: string }>> 
   Cloud: Cloud,
 };
 
-function Nav({ name, avatarUrl }: { name: string; avatarUrl?: string }) {
+const NAV_ITEMS = [
+  { id: "profile", label: "Profile" },
+  { id: "projects", label: "Work" },
+  { id: "skills", label: "Skills" },
+  { id: "education", label: "Education" },
+  { id: "contact", label: "Contact" },
+];
+
+function Nav({ name, avatarUrl, cvUrl }: { name: string; avatarUrl?: string; cvUrl: string }) {
   const [scrolled, setScrolled] = useState(false);
+  const [active, setActive] = useState<string>("");
   useEffect(() => {
     const on = () => setScrolled(window.scrollY > 24);
     on();
-    window.addEventListener("scroll", on);
+    window.addEventListener("scroll", on, { passive: true });
     return () => window.removeEventListener("scroll", on);
+  }, []);
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) if (e.isIntersecting) setActive(e.target.id);
+      },
+      { rootMargin: "-40% 0px -55% 0px" },
+    );
+    NAV_ITEMS.forEach((n) => {
+      const el = document.getElementById(n.id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
   }, []);
   const firstName = name.split(" ")[0] || "Portfolio";
   return (
@@ -191,17 +97,16 @@ function Nav({ name, avatarUrl }: { name: string; avatarUrl?: string }) {
           <span className="text-sm font-medium">{firstName}</span>
         </div>
         <div className="hidden md:flex items-center flex-1 justify-center">
-          {[
-            { id: "profile", label: "Profile" },
-            { id: "projects", label: "Work" },
-            { id: "skills", label: "Skills" },
-            { id: "education", label: "Education" },
-            { id: "contact", label: "Contact" },
-          ].map((n) => (
+          {NAV_ITEMS.map((n) => (
             <a
               key={n.id}
               href={`#${n.id}`}
-              className="px-3.5 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-accent"
+              aria-current={active === n.id ? "true" : undefined}
+              className={`px-3.5 py-1.5 text-sm transition-colors duration-200 rounded-full ${
+                active === n.id
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
+              }`}
             >
               {n.label}
             </a>
@@ -209,7 +114,7 @@ function Nav({ name, avatarUrl }: { name: string; avatarUrl?: string }) {
         </div>
         <div className="flex items-center gap-1.5 ml-auto md:ml-0">
           <a
-            href="/Mayantha_Udayanga_CV.pdf"
+            href={cvUrl}
             download
             aria-label="Download CV"
             className="w-9 h-9 rounded-full glass flex items-center justify-center hover:scale-[1.05] transition"
@@ -267,7 +172,11 @@ export default function Portfolio() {
   return (
     <div className="portfolio-shell relative min-h-screen bg-background text-foreground">
       <AmbientBackground />
-      <Nav name={hero.name} avatarUrl={hero.avatarUrl} />
+      <Nav
+        name={hero.name}
+        avatarUrl={hero.avatarUrl}
+        cvUrl={contact.cvUrl || FALLBACK.contact.cvUrl}
+      />
 
       {/* HERO */}
       <section className="relative pt-32 pb-24 overflow-hidden">
@@ -313,13 +222,13 @@ export default function Portfolio() {
             >
               <a
                 href="#projects"
-                className="rounded-full px-5 py-2.5 text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition flex items-center gap-2"
+                className="rounded-full px-5 py-2.5 text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 active:scale-[0.97] transition flex items-center gap-2"
               >
                 <ArrowUpRight className="w-4 h-4" />
                 View Work
               </a>
               <a
-                href="/Mayantha_Udayanga_CV.pdf"
+                href={contact.cvUrl || FALLBACK.contact.cvUrl}
                 download
                 className="rounded-full px-5 py-2.5 text-sm font-medium card-soft hover:bg-accent transition flex items-center gap-2"
               >
@@ -335,7 +244,7 @@ export default function Portfolio() {
             transition={{ duration: 0.7, delay: 0.4 }}
             className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-3"
           >
-            {hero.stats?.map((s) => (
+            {(hero.stats ?? []).map((s) => (
               <div key={s.label} className="card-soft rounded-2xl p-5">
                 <p className="text-lg font-semibold tracking-tight">{s.value}</p>
                 <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
@@ -358,7 +267,7 @@ export default function Portfolio() {
                 target={c.href.startsWith("http") ? "_blank" : undefined}
                 rel="noopener noreferrer"
                 aria-label={c.label}
-                className="w-11 h-11 rounded-2xl card-soft flex items-center justify-center hover:-translate-y-0.5 transition"
+                className="w-11 h-11 rounded-2xl card-soft flex items-center justify-center hover:-translate-y-0.5 hover:bg-accent transition duration-200"
               >
                 <c.icon className="w-4 h-4" />
               </a>
@@ -429,7 +338,7 @@ export default function Portfolio() {
         <div className="grid md:grid-cols-2 gap-5">
           {projects.map((p, i) => (
             <Reveal key={p.name + i} delay={i * 0.05}>
-              <article className="card-soft rounded-2xl p-7 h-full group hover:-translate-y-1 transition">
+              <article className="card-soft card-hover rounded-2xl p-7 h-full group">
                 <div className="flex items-start justify-between mb-1">
                   <p className="text-[11px] uppercase tracking-widest text-muted-foreground">
                     {p.tag}
@@ -471,7 +380,7 @@ export default function Portfolio() {
             const Icon = skillIconMap[g.label] || Sparkles;
             return (
               <Reveal key={g.label} delay={i * 0.04}>
-                <div className="card-soft rounded-2xl p-6 h-full">
+                <div className="card-soft card-hover rounded-2xl p-6 h-full">
                   <div className="flex items-center gap-3 mb-5">
                     <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center">
                       <Icon className="w-4 h-4" />
@@ -507,7 +416,7 @@ export default function Portfolio() {
           <div className="lg:col-span-3 space-y-4">
             {education.map((e, i) => (
               <Reveal key={e.title + i} delay={i * 0.04}>
-                <div className="card-soft rounded-2xl p-5 flex gap-5 items-start">
+                <div className="card-soft card-hover rounded-2xl p-5 flex gap-5 items-start">
                   <div className="w-10 h-10 shrink-0 rounded-xl bg-muted flex items-center justify-center">
                     <GraduationCap className="w-4 h-4" />
                   </div>

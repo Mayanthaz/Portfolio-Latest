@@ -121,6 +121,24 @@
   html {
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  section[id] {
+    scroll-margin-top: 6rem;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 22%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 0.5rem;
+  }
+  button:not(:disabled),
+  [role="button"],
+  summary {
+    cursor: pointer;
   }
   body {
     background-color: var(--color-background);
@@ -149,6 +167,44 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-card);
+}
+
+@utility card-hover {
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.2s ease;
+  &:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in oklab, var(--foreground) 16%, transparent);
+    box-shadow:
+      0 1px 0 oklch(1 0 0 / 6%) inset,
+      0 20px 40px -20px oklch(0 0 0 / 28%);
+  }
+}
+
+@utility field {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-input);
+  background: var(--color-background);
+  padding: 0.55rem 0.8rem;
+  font-size: 0.875rem;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+  &::placeholder {
+    color: var(--color-muted-foreground);
+    opacity: 0.7;
+  }
+  &:hover {
+    border-color: color-mix(in oklab, var(--foreground) 25%, transparent);
+  }
+  &:focus {
+    outline: none;
+    border-color: var(--color-ring);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-ring) 18%, transparent);
+  }
 }
 
 @utility traffic-dots {
@@ -255,6 +311,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
   .ambient-orb,
   .ambient-grid {
     animation: none;
