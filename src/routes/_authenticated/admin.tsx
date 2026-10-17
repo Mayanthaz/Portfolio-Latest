@@ -206,10 +206,16 @@ function SectionEditor<K extends SectionKey>({
 
   const save = useMutation({
     mutationFn: async (next: SiteContentMap[K]) => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        throw new Error(
+          "You're signed in with the passcode only, so the database rejects edits. Sign out, then sign in again — the passcode must also be the Supabase password for the admin account.",
+        );
+      }
       const { error } = await supabase
         .from("site_content")
         .upsert({ section, value: next as never });
-      if (error) throw error;
+      if (error) throw new Error(error.message || "Database rejected the save.");
       return next;
     },
     onSuccess: (next) => {
@@ -244,9 +250,8 @@ function SectionEditor<K extends SectionKey>({
 
   const set = (v: unknown) => onChange(v as SiteContentMap[K]);
   const errorMessage =
-    save.error instanceof Error && save.error.message
-      ? save.error.message
-      : "Save failed. Please sign in again and retry.";
+    (save.error as { message?: string } | null)?.message ||
+    "Save failed. Please sign in again and retry.";
 
   return (
     <div className="card-soft rounded-2xl overflow-hidden">
