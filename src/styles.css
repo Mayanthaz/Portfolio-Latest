@@ -1,6 +1,10 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import "@fontsource-variable/geist";
+@import "@fontsource/instrument-serif/400.css";
+@import "@fontsource/instrument-serif/400-italic.css";
+@import "@fontsource-variable/jetbrains-mono";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -32,85 +36,100 @@
   --color-ring: var(--ring);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
-  --font-display: "SF Pro Display", "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-sans: "SF Pro Text", "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --color-brand: var(--brand);
+  --color-brand-2: var(--brand-2);
+  --font-display:
+    "Geist Variable", "Geist", "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-sans:
+    "Geist Variable", "Geist", "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-mono:
+    "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
 :root {
-  --radius: 0.9rem;
+  --radius: 1rem;
 
-  /* Light, paper-clean macOS theme */
-  --background: oklch(0.985 0.003 250);
-  --foreground: oklch(0.18 0.015 260);
+  /* Warm paper light theme */
+  --background: oklch(0.975 0.006 90);
+  --foreground: oklch(0.2 0.02 285);
 
-  --surface: oklch(1 0 0);
-  --surface-2: oklch(0.96 0.005 250);
+  --surface: oklch(0.995 0.003 90);
+  --surface-2: oklch(0.955 0.008 90);
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.015 260);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.015 260);
+  --card: oklch(0.995 0.003 90);
+  --card-foreground: oklch(0.2 0.02 285);
+  --popover: oklch(0.995 0.003 90);
+  --popover-foreground: oklch(0.2 0.02 285);
 
-  --primary: oklch(0.22 0.02 260);
-  --primary-foreground: oklch(0.99 0.002 250);
-  --secondary: oklch(0.95 0.005 250);
-  --secondary-foreground: oklch(0.22 0.02 260);
-  --muted: oklch(0.96 0.005 250);
-  --muted-foreground: oklch(0.48 0.015 260);
-  --accent: oklch(0.94 0.01 250);
-  --accent-foreground: oklch(0.22 0.02 260);
-  --destructive: oklch(0.6 0.22 27);
+  --primary: oklch(0.2 0.02 285);
+  --primary-foreground: oklch(0.98 0.004 90);
+  --secondary: oklch(0.94 0.008 90);
+  --secondary-foreground: oklch(0.2 0.02 285);
+  --muted: oklch(0.945 0.008 90);
+  --muted-foreground: oklch(0.47 0.02 285);
+  --accent: oklch(0.93 0.012 290);
+  --accent-foreground: oklch(0.2 0.02 285);
+  --destructive: oklch(0.58 0.22 27);
   --destructive-foreground: oklch(0.99 0.002 250);
-  --border: oklch(0 0 0 / 8%);
-  --input: oklch(0 0 0 / 10%);
-  --ring: oklch(0.22 0.02 260);
+  --border: oklch(0.2 0.02 285 / 10%);
+  --input: oklch(0.2 0.02 285 / 14%);
+  --ring: oklch(0.55 0.2 290);
 
-  --glass-bg: oklch(1 0 0 / 65%);
-  --glass-border: oklch(0 0 0 / 7%);
-  --shadow-soft: 0 1px 2px oklch(0 0 0 / 4%), 0 8px 24px -12px oklch(0 0 0 / 12%);
+  --brand: oklch(0.55 0.22 290);
+  --brand-2: oklch(0.62 0.14 200);
+
+  --glass-bg: oklch(0.995 0.003 90 / 70%);
+  --glass-border: oklch(0.2 0.02 285 / 9%);
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 4%), 0 10px 30px -14px oklch(0.3 0.05 285 / 20%);
   --shadow-card:
-    0 1px 0 oklch(1 0 0 / 60%) inset, 0 1px 2px oklch(0 0 0 / 4%),
-    0 12px 32px -16px oklch(0 0 0 / 14%);
-  --ambient-primary: oklch(0.72 0.12 270 / 12%);
-  --ambient-secondary: oklch(0.76 0.08 220 / 10%);
-  --ambient-grid: oklch(0.2 0.02 260 / 4%);
+    0 1px 0 oklch(1 0 0 / 70%) inset, 0 1px 2px oklch(0 0 0 / 4%),
+    0 14px 34px -18px oklch(0.3 0.05 285 / 22%);
+  --ambient-primary: oklch(0.75 0.14 290 / 18%);
+  --ambient-secondary: oklch(0.8 0.1 200 / 16%);
+  --ambient-grid: oklch(0.2 0.02 285 / 5%);
+  --noise-opacity: 0.35;
 }
 
 .dark {
-  --background: oklch(0.14 0.01 260);
-  --foreground: oklch(0.97 0.003 250);
+  --background: oklch(0.135 0.014 285);
+  --foreground: oklch(0.96 0.006 90);
 
-  --surface: oklch(0.19 0.015 260);
-  --surface-2: oklch(0.22 0.015 260);
+  --surface: oklch(0.175 0.016 285);
+  --surface-2: oklch(0.21 0.018 285);
 
-  --card: oklch(0.19 0.015 260);
-  --card-foreground: oklch(0.97 0.003 250);
-  --popover: oklch(0.19 0.015 260);
-  --popover-foreground: oklch(0.97 0.003 250);
+  --card: oklch(0.175 0.016 285);
+  --card-foreground: oklch(0.96 0.006 90);
+  --popover: oklch(0.175 0.016 285);
+  --popover-foreground: oklch(0.96 0.006 90);
 
-  --primary: oklch(0.97 0.003 250);
-  --primary-foreground: oklch(0.18 0.015 260);
-  --secondary: oklch(0.24 0.015 260);
-  --secondary-foreground: oklch(0.97 0.003 250);
-  --muted: oklch(0.24 0.015 260);
-  --muted-foreground: oklch(0.66 0.01 260);
-  --accent: oklch(0.26 0.015 260);
-  --accent-foreground: oklch(0.97 0.003 250);
+  --primary: oklch(0.96 0.006 90);
+  --primary-foreground: oklch(0.16 0.015 285);
+  --secondary: oklch(0.23 0.018 285);
+  --secondary-foreground: oklch(0.96 0.006 90);
+  --muted: oklch(0.22 0.018 285);
+  --muted-foreground: oklch(0.7 0.015 285);
+  --accent: oklch(0.26 0.03 288);
+  --accent-foreground: oklch(0.96 0.006 90);
   --destructive: oklch(0.68 0.2 25);
   --destructive-foreground: oklch(0.97 0.003 250);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.78 0.02 250);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 13%);
+  --ring: oklch(0.75 0.16 290);
 
-  --glass-bg: oklch(0.2 0.015 260 / 65%);
-  --glass-border: oklch(1 0 0 / 12%);
-  --shadow-soft: 0 1px 2px oklch(0 0 0 / 30%), 0 12px 32px -16px oklch(0 0 0 / 50%);
+  --brand: oklch(0.74 0.17 290);
+  --brand-2: oklch(0.82 0.13 190);
+
+  --glass-bg: oklch(0.19 0.016 285 / 62%);
+  --glass-border: oklch(1 0 0 / 11%);
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 35%), 0 14px 36px -16px oklch(0 0 0 / 60%);
   --shadow-card:
-    0 1px 0 oklch(1 0 0 / 6%) inset, 0 1px 2px oklch(0 0 0 / 30%),
-    0 14px 36px -18px oklch(0 0 0 / 55%);
-  --ambient-primary: oklch(0.55 0.16 280 / 14%);
-  --ambient-secondary: oklch(0.58 0.1 230 / 10%);
-  --ambient-grid: oklch(0.92 0.01 260 / 3%);
+    0 1px 0 oklch(1 0 0 / 6%) inset, 0 1px 2px oklch(0 0 0 / 35%),
+    0 18px 40px -20px oklch(0 0 0 / 65%);
+  --ambient-primary: oklch(0.5 0.2 290 / 22%);
+  --ambient-secondary: oklch(0.6 0.13 200 / 14%);
+  --ambient-grid: oklch(1 0 0 / 3.5%);
+  --noise-opacity: 0.5;
 }
 
 @layer base {
@@ -144,14 +163,15 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
-    letter-spacing: -0.011em;
+    letter-spacing: -0.01em;
+    line-height: 1.6;
   }
   h1,
   h2,
   h3,
   h4 {
     font-family: var(--font-display);
-    letter-spacing: -0.03em;
+    letter-spacing: -0.035em;
     font-weight: 600;
   }
 }
@@ -323,5 +343,117 @@
   .ambient-grid {
     animation: none;
     will-change: auto;
+  }
+}
+
+/* ---------- Redesign primitives ---------- */
+
+.font-serif-italic {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.text-gradient {
+  background: linear-gradient(100deg, var(--brand), var(--brand-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.noise {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: var(--noise-opacity);
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.07 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+.spotlight {
+  position: relative;
+  overflow: hidden;
+}
+.spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+  background: radial-gradient(
+    420px circle at var(--mx, 50%) var(--my, 50%),
+    color-mix(in oklab, var(--brand) 22%, transparent),
+    transparent 60%
+  );
+}
+.spotlight:hover::before {
+  opacity: 1;
+}
+.spotlight > * {
+  position: relative;
+}
+
+.gradient-border {
+  position: relative;
+}
+.gradient-border::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--brand), transparent 40%, var(--brand-2));
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.marquee {
+  display: flex;
+  width: max-content;
+  gap: 0.75rem;
+  animation: marquee 38s linear infinite;
+}
+.marquee-wrap {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent);
+}
+.marquee-wrap:hover .marquee {
+  animation-play-state: paused;
+}
+@keyframes marquee {
+  to {
+    transform: translateX(calc(-50% - 0.375rem));
+  }
+}
+
+.timeline-line {
+  background: linear-gradient(to bottom, var(--brand), var(--border) 30%, var(--border));
+}
+
+@keyframes float-slow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+.float-slow {
+  animation: float-slow 6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee,
+  .float-slow {
+    animation: none;
   }
 }

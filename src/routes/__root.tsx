@@ -95,7 +95,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "Software engineering portfolio featuring full-stack, mobile, desktop, and API-driven projects.",
       },
-      { name: "theme-color", content: "#202126" },
+      { name: "theme-color", content: "#16141d" },
     ],
     links: [
       {
